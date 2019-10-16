@@ -1,9 +1,11 @@
 import java.math.BigInteger
+import java.util.concurrent.TimeUnit
 
 import io.nem.sdk.api.{
   AccountRepository,
   BlockRepository,
   MetadataRepository,
+  MosaicRepository,
   NodeRepository,
   RepositoryFactory,
   TransactionRepository
@@ -11,64 +13,84 @@ import io.nem.sdk.api.{
 import io.nem.sdk.infrastructure.vertx.{ AccountRepositoryVertxImpl, RepositoryFactoryVertxImpl }
 import io.nem.sdk.model.account.{ Account, AccountInfo, Address }
 import io.nem.sdk.model.blockchain.{ BlockInfo, NetworkType }
-import io.nem.sdk.model.mosaic.{ Mosaic, NetworkCurrencyMosaic }
+import io.nem.sdk.model.mosaic.{ Mosaic, MosaicId, NetworkCurrencyMosaic }
 import io.nem.sdk.model.transaction.{
   PlainMessage,
   Transaction,
   TransactionAnnounceResponse,
   TransactionInfo,
   TransferTransaction,
-  TransferTransactionFactory
+  TransferTransactionFactory,
+  UInt64Id
 }
-import io.nem.sdk.openapi
-import io.nem.sdk.openapi.vertx.invoker.ApiClient
 import io.reactivex.Observable
 import java.util.{ Collections, Optional }
 
 import io.nem.sdk.infrastructure.Listener
 object App {
   def main(args: Array[String]): Unit = {
-    val privateKey      = "9092486B067AAE2E7EDF139840410C2F7D64906D3B8CF46CB5DF8AF1323D97FE"
+    val privateKey      = "02AD22F0180ED5663435626F1C3A1DEA8745D78AAAF706521EDAA89E53E3E263"
     val externalAccount = Account.createFromPrivateKey(privateKey, NetworkType.MIJIN_TEST)
-    val myAccount       = Account.generateNewAccount(NetworkType.MIJIN_TEST)
-    println(
-      s"Your new account address is: ${myAccount.getAddress.pretty()} and it's private key: ${myAccount.getPrivateKey}"
-    )
-    println(
-      s"Your new account address is: ${externalAccount.getAddress.pretty()} and it's private key: ${externalAccount.getPrivateKey}"
-    )
     val repositoryFactory: RepositoryFactory = new RepositoryFactoryVertxImpl(
       "http://localhost:3001"
     )
-    val nodeRepository: NodeRepository = repositoryFactory.createNodeRepository()
-    println(s"Node info")
-    val friendlyName: Observable[NetworkType] =
-      nodeRepository.getNodeInfo.map(in => in.getNetworkIdentifier)
-    friendlyName.forEach(c => println(c.getValue))
-
-    println(s"Block info")
-    val blockRepository: BlockRepository = repositoryFactory.createBlockRepository()
-    val blockInfo: Observable[BlockInfo] = blockRepository.getBlockByHeight(BigInteger.valueOf(1))
-    blockInfo.forEach(in => println(s"iii ${in.getGenerationHash}"))
-
-    val transactionRepository = repositoryFactory.createTransactionRepository()
-
+    val listener                             = repositoryFactory.createListener()
     val accountRepository: AccountRepository = repositoryFactory.createAccountRepository()
-    val accountInfo: Observable[AccountInfo] =
-      accountRepository.getAccountInfo(externalAccount.getAddress)
+    val transactionRepository                = repositoryFactory.createTransactionRepository()
+    val blockRepository: BlockRepository     = repositoryFactory.createBlockRepository()
+    val mosaicRepository: MosaicRepository   = repositoryFactory.createMosaicRepository()
+    val msg                                  = "E2ETest:standaloneTransferTransaction:message-hello world!"
+    val blockGenesis: Observable[BlockInfo] =
+      blockRepository.getBlockByHeight(BigInteger.valueOf(1))
+    // ------------------------------------------------------------------------
+    val myAccount = Account.createFromPrivateKey(
+      "47D9FDC9A1B7BF6D53A7F10FCDDF5C951F1FD9DB65E12CE12E6E85B6D76DFCFB",
+      NetworkType.MIJIN_TEST
+    )
 
-    accountInfo.subscribe(in => {
-      val mosaics = in.getMosaics
-      println("show account info")
-      println(s"___ ${in.getAddressHeight} ___")
-      mosaics.forEach(m => println(s"_ Mosaic : ${m.getIdAsHex} _ "))
-    })
+    println(
+      s"my account address is: ${myAccount.getAddress.pretty()}\n" +
+      s"private key: ${myAccount.getPrivateKey}\n" +
+      s"public key : ${myAccount.getPublicKey}"
+    )
+    println(
+      s"external account address is: ${externalAccount.getAddress.pretty()}\n " +
+      s"private key: ${externalAccount.getPrivateKey}\n" +
+      s"public key : ${externalAccount.getPublicKey}"
+    )
+    blockGenesis.forEach(in => println(s"block genesis information ${in.getGenerationHash}"))
 
-    // listener
-    val listener = repositoryFactory.createListener()
+    /*    initTransferTransaction(
+      externalAccount.getAddress,
+      msg,
+      myAccount,
+      blockGenesis,
+      transactionRepository
+    )*/
 
-    // init Transfer Transaction
-    val msg = "E2ETest:standaloneTransferTransaction:message-hello world!"
+    createMosaic()
+    //transactionInfo()
+
+    def transactionInfo(): Unit = {
+      println("#### transaction info ####")
+      val eventualResult =
+        transactionRepository.getTransactionStatus(
+          "25703F250B643993AA952DC1224E1261F1A614A465AB77BA4D2510C7BC6477FC"
+        )
+      eventualResult.forEach(in => {
+        println("transactions detail")
+        println(s"### detail : ${in.getStatus}")
+      })
+    }
+
+    def createMosaic(): Unit = {
+      println("#### creating mosaics ####")
+      val mosaic = mosaicRepository.getMosaic(new MosaicId("4B2E2871E0614525"))
+      mosaic.forEach(in => {
+        println(s"### detail ${in.getMosaicId}")
+      })
+
+    }
 
     def initTransferTransaction(
       recipientAddress: Address,
@@ -77,6 +99,7 @@ object App {
       blockInfo: Observable[BlockInfo],
       transactionRepository: TransactionRepository
     ): Observable[TransactionAnnounceResponse] = {
+      println("#### init transaction #### ")
       val transferTransactionBuilded = TransferTransactionFactory
         .create(
           fromAccount.getNetworkType,
@@ -88,31 +111,13 @@ object App {
 
       val x: Observable[TransactionAnnounceResponse] = blockInfo.flatMap(in => {
         val signedTransaction = fromAccount.sign(transferTransactionBuilded, in.getGenerationHash)
+        println(s"# transaction hast : ${signedTransaction.getHash}")
         val transactionAnnounceResponse: Observable[TransactionAnnounceResponse] =
           transactionRepository.announce(signedTransaction)
         transactionAnnounceResponse
       })
+      x.forEach(in => println(s"result msg from transaction : ${in.getMessage}"))
       x
     }
-
-    def validateTransactionAnnounceCorrectly(address: Address,
-                                             transactionHash: String,
-                                             listener: Listener) = {
-      val observableTransaction = listener
-        .confirmed(address)
-        .filter(t => {
-          t.getTransactionInfo()
-            .flatMap[String](_.getHash)
-            .filter(_ == transactionHash)
-            .isPresent
-        })
-    }
-    /*
-    def getTransactionOrFail(address: Address,
-                             listener: Listener,
-                             observable: Observable[Transaction]) = {
-      val errorOrTransactionObservable = Observable.merge()
-    }*/
-
   }
 }
