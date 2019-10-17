@@ -13,7 +13,7 @@ import io.nem.sdk.model.transaction.{ TransactionAnnounceResponse, TransferTrans
 import io.reactivex.Observable
 
 object App {
-  def main(args: Array[String]): Unit = {
+  def exec() = {
     val privateKey      = "02AD22F0180ED5663435626F1C3A1DEA8745D78AAAF706521EDAA89E53E3E263"
     val externalAccount = Account.createFromPrivateKey(privateKey, NetworkType.MIJIN_TEST)
     val repositoryFactory: RepositoryFactory = new RepositoryFactoryVertxImpl(
