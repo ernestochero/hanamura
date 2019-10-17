@@ -1,32 +1,17 @@
+package nemservice
+
 import java.math.BigInteger
-import java.util.concurrent.TimeUnit
+import java.util.Collections
 
-import io.nem.sdk.api.{
-  AccountRepository,
-  BlockRepository,
-  MetadataRepository,
-  MosaicRepository,
-  NodeRepository,
-  RepositoryFactory,
-  TransactionRepository
-}
-import io.nem.sdk.infrastructure.vertx.{ AccountRepositoryVertxImpl, RepositoryFactoryVertxImpl }
-import io.nem.sdk.model.account.{ Account, AccountInfo, Address }
+import io.nem.sdk.api._
+import io.nem.sdk.infrastructure.vertx.RepositoryFactoryVertxImpl
+import io.nem.sdk.model.account.{ Account, Address }
 import io.nem.sdk.model.blockchain.{ BlockInfo, NetworkType }
-import io.nem.sdk.model.mosaic.{ Mosaic, MosaicId, NetworkCurrencyMosaic }
-import io.nem.sdk.model.transaction.{
-  PlainMessage,
-  Transaction,
-  TransactionAnnounceResponse,
-  TransactionInfo,
-  TransferTransaction,
-  TransferTransactionFactory,
-  UInt64Id
-}
+import io.nem.sdk.model.message.PlainMessage
+import io.nem.sdk.model.mosaic.{ MosaicId, NetworkCurrencyMosaic }
+import io.nem.sdk.model.transaction.{ TransactionAnnounceResponse, TransferTransactionFactory }
 import io.reactivex.Observable
-import java.util.{ Collections, Optional }
 
-import io.nem.sdk.infrastructure.Listener
 object App {
   def main(args: Array[String]): Unit = {
     val privateKey      = "02AD22F0180ED5663435626F1C3A1DEA8745D78AAAF706521EDAA89E53E3E263"
