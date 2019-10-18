@@ -7,7 +7,7 @@ description := "GraphQL server written with sangria - Hanamura."
 scalaVersion := "2.12.6"
 
 scalacOptions ++= Seq("-deprecation", "-feature")
-
+scalacOptions ++= Seq("-Ypartial-unification")
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
 val akkaVersion = "2.5.19"
@@ -25,10 +25,21 @@ libraryDependencies ++= Seq(
   "de.heikoseeberger" %% "akka-http-circe" % "1.21.0",
 
   "io.circe" %%	"circe-core" % "0.9.3",
-  "io.circe" %% "circe-parser" % "0.9.3",
+  //"io.circe" %% "circe-parser" % "0.9.3",
   "io.circe" %% "circe-optics" % "0.9.3",
 
   "org.mongodb.scala" %% "mongo-scala-driver" % "2.1.0",
+  "com.github.ghostdogpr" %% "caliban" % "0.0.6",
+  "dev.zio" %% "zio" % "1.0.0-RC15",
+  "dev.zio" %% "zio-streams" % "1.0.0-RC15",
+  "dev.zio"       %% "zio-interop-cats"    % "2.0.0.0-RC6",
+  "org.typelevel" %% "cats-effect"         % "2.0.0",
+  "org.http4s"    %% "http4s-blaze-server" % "0.21.0-M5",
+  "org.http4s" % "http4s-core_2.12" % "0.21.0-M5",
+  "org.http4s"    %% "http4s-dsl"          % "0.21.0-M5",
+  "org.http4s"    %% "http4s-circe"        % "0.21.0-M5",
+  "io.circe"      %% "circe-parser"        % "0.12.2",
+  "io.circe"      %% "circe-derivation"    % "0.12.0-M7",
 )
 
 Revolver.settings
