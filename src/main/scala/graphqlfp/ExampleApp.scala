@@ -26,8 +26,8 @@ object ExampleApp extends CatsApp with GenericSchema[Console with Clock] {
 
   type ExampleTask[A] = RIO[Console with Clock, A]
 
-  override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] =
-    for {
+  override def run(args: List[String]): ZIO[ZEnv, Nothing, Int] =
+    (for {
       service <- ExampleService.make(sampleCharacters)
       interpreter = graphQL(
         RootResolver(
@@ -45,6 +45,9 @@ object ExampleApp extends CatsApp with GenericSchema[Console with Clock] {
             "/ws/graphql"  -> CORS(Http4sAdapter.makeWebSocketService(interpreter))
           ).orNotFound
         )
-    } yield _
+        .resource
+        .toManaged
+        .useForever
+    } yield 0).catchAll(err => putStrLn(err.toString).as(1))
 
 }

@@ -4,7 +4,7 @@ version := "0.1"
 
 description := "GraphQL server written with sangria - Hanamura."
 
-scalaVersion := "2.12.6"
+scalaVersion := "2.12.10"
 
 scalacOptions ++= Seq("-deprecation", "-feature")
 scalacOptions ++= Seq("-Ypartial-unification")
@@ -29,17 +29,15 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-optics" % "0.9.3",
 
   "org.mongodb.scala" %% "mongo-scala-driver" % "2.1.0",
-  "com.github.ghostdogpr" %% "caliban" % "0.0.6",
-  "dev.zio" %% "zio" % "1.0.0-RC15",
-  "dev.zio" %% "zio-streams" % "1.0.0-RC15",
+  "com.github.ghostdogpr" %% "caliban" % "0.1.0",
   "dev.zio"       %% "zio-interop-cats"    % "2.0.0.0-RC6",
   "org.typelevel" %% "cats-effect"         % "2.0.0",
-  "org.http4s"    %% "http4s-blaze-server" % "0.21.0-M5",
-  "org.http4s" % "http4s-core_2.12" % "0.21.0-M5",
-  "org.http4s"    %% "http4s-dsl"          % "0.21.0-M5",
-  "org.http4s"    %% "http4s-circe"        % "0.21.0-M5",
+  "org.http4s"    %% "http4s-dsl"          % "0.20.6",
+  "org.http4s"    %% "http4s-circe"        % "0.20.6",
+  "org.http4s"    %% "http4s-blaze-server" % "0.20.6",
   "io.circe"      %% "circe-parser"        % "0.12.2",
   "io.circe"      %% "circe-derivation"    % "0.12.0-M7",
+  compilerPlugin(("org.typelevel" %% "kind-projector" % "0.11.0").cross(CrossVersion.full))
 )
 
 Revolver.settings

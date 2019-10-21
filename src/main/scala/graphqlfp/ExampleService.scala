@@ -5,29 +5,32 @@ import ExampleData._
 class ExampleService(characters: Ref[List[Character]], subscribers: Ref[List[Queue[String]]]) {
 
   def getCharacters(origin: Option[Origin]): UIO[List[Character]] =
-    characters.get.map(_.filter(c => origin.forall(c.origin == _))
+    characters.get.map(_.filter(c => origin.forall(c.origin == _)))
 
-  def findCharacter(name: String): UIO[Option[Character]] = characters.get.map(_.find(c => c.name == name))
+  def findCharacter(name: String): UIO[Option[Character]] =
+    characters.get.map(_.find(c => c.name == name))
 
   def deleteCharacter(name: String): UIO[Boolean] =
-    characters.modify(
-      list =>
-        if (list.exists(_.name == name)) (true, list.filterNot(_.name == name))
-        else (false, list)
-    ).tap(
-      deleted =>
-        UIO.when(deleted){
-          subscribers.get.flatMap(
-            // add item to all subscribers
-            UIO.foreach(_){
-              queue =>
-                queue.offer(name)
-                  .onInterrupt(subscribers.update(_.filterNot(_ == queue))) // if queue was shutdown, remove from subscribers
-            }
-          )
-        }
-    )
-
+    characters
+      .modify(
+        list =>
+          if (list.exists(_.name == name)) (true, list.filterNot(_.name == name))
+          else (false, list)
+      )
+      .tap(
+        deleted =>
+          UIO.when(deleted)(
+            subscribers.get.flatMap(
+              // add item to all subscribers
+              UIO.foreach(_)(
+                queue =>
+                  queue
+                    .offer(name)
+                    .onInterrupt(subscribers.update(_.filterNot(_ == queue))) // if queue was shutdown, remove from subscribers
+              )
+            )
+        )
+      )
 
   def deletedEvents: ZStream[Any, Nothing, String] = ZStream.unwrap {
     for {
@@ -38,12 +41,9 @@ class ExampleService(characters: Ref[List[Character]], subscribers: Ref[List[Que
 }
 
 object ExampleService {
-  def make(initial: List[Character]): UIO[ExampleService] = {
+  def make(initial: List[Character]): UIO[ExampleService] =
     for {
-      state <- Ref.make(initial)
+      state       <- Ref.make(initial)
       subscribers <- Ref.make(List.empty[Queue[String]])
     } yield new ExampleService(state, subscribers)
-  }
 }
-
-

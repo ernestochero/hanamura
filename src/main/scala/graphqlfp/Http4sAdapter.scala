@@ -6,7 +6,6 @@ import fs2.{ Pipe, Stream }
 import io.circe.derivation.deriveDecoder
 import io.circe.parser.{ decode, parse }
 import io.circe.{ Decoder, Json }
-import org.http4s.CharsetRange.*
 import org.http4s._
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.dsl.Http4sDsl
