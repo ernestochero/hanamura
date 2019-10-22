@@ -1,4 +1,5 @@
-package graphqlfp
+package graphql
+
 import caliban.{ CalibanError, GraphQL, ResponseValue }
 import caliban.ResponseValue.{ ObjectValue, StreamValue }
 import caliban.parsing.adt.Value
@@ -14,6 +15,7 @@ import org.http4s.websocket.WebSocketFrame
 import org.http4s.websocket.WebSocketFrame.Text
 import zio.interop.catz._
 import zio._
+
 object Http4sAdapter {
 
   case class GraphQLRequest(query: String,

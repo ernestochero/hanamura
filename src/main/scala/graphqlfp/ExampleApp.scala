@@ -13,6 +13,7 @@ import zio.stream.ZStream
 import zio.{ RIO, URIO, ZEnv, ZIO }
 import ExampleData._
 import caliban.RootResolver
+import graphql.Http4sAdapter
 object ExampleApp extends CatsApp with GenericSchema[Console with Clock] {
   case class Queries(
     @GQLDescription("Return all characters from a given origin")
