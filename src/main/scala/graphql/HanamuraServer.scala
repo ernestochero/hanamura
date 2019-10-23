@@ -3,6 +3,7 @@ import caliban.schema.GenericSchema
 import caliban.GraphQL._
 import caliban.RootResolver
 import com.typesafe.config.ConfigFactory
+import mongodb.Mongo
 import org.http4s.implicits._
 import org.http4s.server.Router
 import org.http4s.server.blaze.BlazeServerBuilder
@@ -19,9 +20,12 @@ object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
   case class DatabaseConnection(conn: String = "test connection")
   override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] =
     (for {
-      service <- HanamuraService.make(DatabaseConnection())
+      service <- HanamuraService.make(Mongo.usersCollection)
       interpreter = graphQL(
-        RootResolver(Queries(() => service.sayHello))
+        RootResolver(
+          Queries(() => service.sayHello),
+          Mutations(args => service.addUser(args))
+        )
       )
       _ <- BlazeServerBuilder[HanamuraTask]
         .bindHttp(port, host)

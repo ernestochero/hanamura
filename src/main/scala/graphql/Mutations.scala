@@ -1,3 +1,6 @@
 package graphql
 
-class Mutations {}
+import models.User
+import zio.Task
+
+case class Mutations(addUser: User => Task[User])
