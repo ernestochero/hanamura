@@ -20,6 +20,7 @@ libraryDependencies ++= Seq(
   "org.mongodb.scala" %% "mongo-scala-driver" % "2.1.0",
   "com.typesafe" % "config"               % "1.3.3",
   "com.github.ghostdogpr" %% "caliban" % "0.1.0",
+  "com.github.ghostdogpr" %% "caliban-http4s" % "0.1.0",
   "dev.zio"       %% "zio-interop-cats"    % "2.0.0.0-RC6",
   "org.typelevel" %% "cats-effect"         % "2.0.0",
   "org.http4s"    %% "http4s-dsl"          % "0.20.6",

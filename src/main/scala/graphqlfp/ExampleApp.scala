@@ -4,6 +4,7 @@ import caliban.schema.Annotations.{ GQLDeprecated, GQLDescription }
 import caliban.schema.GenericSchema
 import org.http4s.implicits._
 import org.http4s.server.Router
+import caliban.Http4sAdapter
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.middleware.CORS
 import zio.clock.Clock
@@ -13,7 +14,6 @@ import zio.stream.ZStream
 import zio.{ RIO, URIO, ZEnv, ZIO }
 import ExampleData._
 import caliban.RootResolver
-import graphql.Http4sAdapter
 object ExampleApp extends CatsApp with GenericSchema[Console with Clock] {
   case class Queries(
     @GQLDescription("Return all characters from a given origin")

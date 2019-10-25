@@ -10,22 +10,28 @@ class HanamuraService(userCollection: Ref[MongoCollection[User]],
   val ec: ExecutionContext = ExecutionContext.global
   def sayHello: Task[String] =
     ZIO.fromFuture(
-      implicit ec => Future.failed(new Exception)
+      implicit ec => Future.successful("I'm Hanamura your backend service")
     )
-  def getUserFromDatabase: Task[Seq[User]] =
+  def getUserFromDatabase: Task[List[User]] =
     userCollection.get.flatMap(c => {
       ZIO.fromFuture(
         implicit ec => c.find().toFuture().recoverWith { case e => Future.failed(e) }.map(_.toList)
       )
     })
 
-  def addUser(user: User): Task[User] =
+  def addUser(name: String): Task[User] = {
+    val user = User(name = name)
     userCollection.get.flatMap(c => {
       ZIO.fromFuture(
         implicit ec =>
-          c.insertOne(user).toFuture().recoverWith { case e => Future.failed(e) }.map(_ => user)
+          c.insertOne(user)
+            .toFuture()
+            .recoverWith { case e => Future.failed(e) }
+            .map(_ => user)
       )
     })
+  }
+
 }
 
 object HanamuraService {
