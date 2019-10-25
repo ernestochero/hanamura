@@ -30,7 +30,8 @@ object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
           Queries(service.sayHello,
                   service.getUserFromDatabase,
                   args => service.getUserFromDatabase(args.id)),
-          Mutations(args => service.addUser(args.name))
+          Mutations(args => service.addUser(args.name)),
+          Subscriptions(service.userAddedEvent)
         )
       )
       _ <- BlazeServerBuilder[HanamuraTask]

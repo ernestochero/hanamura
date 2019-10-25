@@ -6,6 +6,8 @@ import org.mongodb.scala.bson.collection.immutable.Document
 import zio.console.Console
 import zio.{ Fiber, Queue, RIO, Ref, Task, UIO, ZIO }
 import commons.Transformers._
+import zio.stream.ZStream
+
 import scala.concurrent.{ ExecutionContext, Future }
 // pass ref of database for future implementation
 class HanamuraService(userCollection: Ref[MongoCollection[User]],
@@ -28,9 +30,9 @@ class HanamuraService(userCollection: Ref[MongoCollection[User]],
     )
   }
 
-  def addUser(name: String): Task[User] = {
+  def addUser(name: String): RIO[Console, User] = {
     val user = User(name = name)
-    userCollection.get.flatMap(c => {
+    val result = userCollection.get.flatMap(c => {
       ZIO.fromFuture(
         implicit ec =>
           c.insertOne(user)
@@ -39,6 +41,26 @@ class HanamuraService(userCollection: Ref[MongoCollection[User]],
             .map(_ => user)
       )
     })
+    for {
+      either <- result.either
+      _ = if (either.isRight)
+        subscribers.get.flatMap(
+          UIO.foreach(_)(
+            queue =>
+              queue
+                .offer(name)
+                .onInterrupt(subscribers.update(_.filterNot(_ == queue))) // if queue was shutdown, remove from subscribers
+          )
+        )
+    } yield ()
+    result
+  }
+
+  def userAddedEvent: ZStream[Any, Nothing, String] = ZStream.unwrap {
+    for {
+      queue <- Queue.unbounded[String]
+      _     <- subscribers.update(queue :: _)
+    } yield ZStream.fromQueue(queue)
   }
 
 }
