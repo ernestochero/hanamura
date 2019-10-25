@@ -27,7 +27,9 @@ object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
       service <- HanamuraService.make(Mongo.usersCollection)
       interpreter = graphQL(
         RootResolver(
-          Queries(service.sayHello, service.getUserFromDatabase),
+          Queries(service.sayHello,
+                  service.getUserFromDatabase,
+                  args => service.getUserFromDatabase(args.id)),
           Mutations(args => service.addUser(args.name))
         )
       )
