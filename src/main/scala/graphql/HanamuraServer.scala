@@ -14,6 +14,7 @@ import zio.clock.Clock
 import zio.console.{ Console, putStrLn }
 import zio.interop.catz._
 import caliban.Http4sAdapter
+import scala.language.higherKinds
 object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
   val config = ConfigFactory.load()
   val host   = config.getString("http.host")
