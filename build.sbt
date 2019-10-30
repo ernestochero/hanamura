@@ -12,6 +12,12 @@ resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repos
 updateOptions := updateOptions.value.withLatestSnapshots(false)
 val akkaVersion = "2.5.19"
 val akkaHttpVersion = "10.1.8"
+val catsVersion = "2.0.0"
+
+val catsDependencies = Seq(
+  "org.typelevel" %% "cats-core" % catsVersion,
+  "org.typelevel" %% "cats-free" % catsVersion
+)
 
 libraryDependencies ++= Seq(
   "io.nem" % "sdk-vertx-client" % "0.13.0-SNAPSHOT" changing(),
@@ -29,7 +35,9 @@ libraryDependencies ++= Seq(
   "io.circe"      %% "circe-parser"        % "0.12.2",
   "io.circe"      %% "circe-derivation"    % "0.12.0-M7",
   compilerPlugin(("org.typelevel" %% "kind-projector" % "0.11.0").cross(CrossVersion.full))
-)
+) ++ catsDependencies
+
+
 
 Revolver.settings
 enablePlugins(JavaAppPackaging)
