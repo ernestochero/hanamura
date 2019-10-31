@@ -34,6 +34,7 @@ libraryDependencies ++= Seq(
   "org.http4s"    %% "http4s-blaze-server" % "0.20.6",
   "io.circe"      %% "circe-parser"        % "0.12.2",
   "io.circe"      %% "circe-derivation"    % "0.12.0-M7",
+  "com.github.pureconfig" %% "pureconfig" % "0.12.1",
   compilerPlugin(("org.typelevel" %% "kind-projector" % "0.11.0").cross(CrossVersion.full))
 ) ++ catsDependencies
 
