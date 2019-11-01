@@ -55,7 +55,7 @@ object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
       .useForever
   } yield 0).catchAll(err => putStrLn(err.toString).as(1))
   private val program = logic.provideSome[zio.ZEnv] { env =>
-    new zio.ZEnv with ConfigurationModule.Live {
+    new System with Clock with Console with Blocking with Random with ConfigurationModule.Live {
       override val system: System.Service[Any]     = env.system
       override val clock: Clock.Service[Any]       = env.clock
       override val console: Console.Service[Any]   = env.console
