@@ -8,8 +8,9 @@ trait ConfigurationModule {
 }
 object ConfigurationModule {
   case class ConfigurationError(message: String) extends RuntimeException(message)
-  case class Http(host: String, port: Int)
-  case class Configuration(appName: String, http: Http)
+  case class HttpConf(host: String, port: Int)
+  case class MongoConf(database: String, uri: String, userCollection: String)
+  case class Configuration(appName: String, httpConf: HttpConf, mongoConf: MongoConf)
 
   trait Service[R] {
     def configuration: ZIO[R, Throwable, Configuration]
