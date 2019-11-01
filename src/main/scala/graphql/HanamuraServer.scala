@@ -14,6 +14,7 @@ import zio.clock.Clock
 import zio.console.{ Console, putStrLn }
 import zio.interop.catz._
 import caliban.Http4sAdapter
+import models.User
 import zio.blocking.Blocking
 import zio.random.Random
 import zio.system.System
@@ -21,8 +22,6 @@ import zio.system.System
 import scala.language.higherKinds
 object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
   val config = ConfigFactory.load()
-  val host   = config.getString("http.host")
-  val port   = config.getInt("http.port")
   type HanamuraTask[A] = RIO[Console with Clock, A]
 
   case class DatabaseConnection(conn: String = "test connection")
@@ -32,7 +31,12 @@ object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
   override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] = program
   val logic = (for {
     configuration <- ConfigurationModule.factory.configuration
-    service       <- HanamuraService.make(Mongo.usersCollection)
+    userCollection <- Mongo.setupMongoConfiguration[User](
+      configuration.mongoConf.uri,
+      configuration.mongoConf.database,
+      configuration.mongoConf.userCollection
+    )
+    service <- HanamuraService.make(userCollection)
     interpreter = graphQL(
       RootResolver(
         Queries(service.sayHello,
@@ -43,7 +47,7 @@ object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
       )
     )
     _ <- BlazeServerBuilder[HanamuraTask]
-      .bindHttp(configuration.http.port, configuration.http.host)
+      .bindHttp(configuration.httpConf.port, configuration.httpConf.host)
       .withHttpApp(
         Router(
           "/api/graphql" -> CORS(Http4sAdapter.makeRestService(interpreter)),
