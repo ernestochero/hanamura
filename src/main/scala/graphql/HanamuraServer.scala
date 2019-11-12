@@ -29,7 +29,7 @@ object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
   implicit val objectIdArgBuilder = ArgBuilder.string.map(new ObjectId(_))
 
   override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] = program
-  val logic = (for {
+  val logic: ZIO[zio.ZEnv with ConfigurationModule, Nothing, Int] = (for {
     configuration <- ConfigurationModule.factory.configuration
     userCollection <- Mongo.setupMongoConfiguration[User](
       configuration.mongoConf.uri,
