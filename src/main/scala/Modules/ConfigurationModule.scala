@@ -1,8 +1,9 @@
-package graphql
-import zio.ZIO
+package Modules
+
+import Modules.ConfigurationModule._
 import pureconfig._
 import pureconfig.generic.auto._
-import ConfigurationModule._
+import zio.ZIO
 trait ConfigurationModule {
   val configurationModule: Service[Any]
 }

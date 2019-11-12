@@ -1,6 +1,6 @@
 package commons
 
-import zio.{ RIO, ZIO }
+import zio.{ RIO, Task, ZIO }
 
 import scala.concurrent.Future
 
@@ -9,4 +9,15 @@ object Transformers {
     def toRIO: RIO[Any, V] =
       ZIO.fromFuture(implicit ec => self)
   }
+
+  implicit final class FutureJavaConverter[V](val self: java.util.concurrent.Future[V]) {
+    def toTask: Task[V] =
+      Task.effectSuspendTotal {
+        if (self.isCancelled)
+          Task.fail(new Exception("Is Cancelled"))
+        else
+          Task.succeed(self.get())
+      }
+  }
+
 }
