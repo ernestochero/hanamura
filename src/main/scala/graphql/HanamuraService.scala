@@ -1,4 +1,5 @@
 package graphql
+import Modules.NemModule.NemService
 import models.User
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.ObjectId
@@ -6,11 +7,12 @@ import org.mongodb.scala.bson.collection.immutable.Document
 import zio.console.Console
 import zio.{ IO, Queue, RIO, Ref, Task, UIO, ZIO }
 import commons.Transformers._
+import io.nem.sdk.model.blockchain.BlockInfo
 import zio.stream.ZStream
 
 import scala.concurrent.{ ExecutionContext, Future }
-// pass ref of database for future implementation
 class HanamuraService(userCollection: Ref[MongoCollection[User]],
+                      nemService: Ref[NemService],
                       subscribers: Ref[List[Queue[String]]]) {
   implicit val ec: ExecutionContext = ExecutionContext.global
   def sayHello: RIO[Console, String] =
@@ -53,6 +55,9 @@ class HanamuraService(userCollection: Ref[MongoCollection[User]],
     } yield user
   }
 
+  def getBlockGenesisFromBC: ZIO[Any, Throwable, BlockInfo] =
+    nemService.get.flatMap(_.getBlockGenesis)
+
   def userAddedEvent: ZStream[Any, Nothing, String] = ZStream.unwrap {
     for {
       queue <- Queue.unbounded[String]
@@ -63,9 +68,10 @@ class HanamuraService(userCollection: Ref[MongoCollection[User]],
 }
 
 object HanamuraService {
-  def make(userCollection: MongoCollection[User]): UIO[HanamuraService] =
+  def make(userCollection: MongoCollection[User], nemService: NemService): UIO[HanamuraService] =
     for {
       state       <- Ref.make(userCollection)
+      nem         <- Ref.make(nemService)
       subscribers <- Ref.make(List.empty[Queue[String]])
-    } yield new HanamuraService(state, subscribers)
+    } yield new HanamuraService(state, nem, subscribers)
 }

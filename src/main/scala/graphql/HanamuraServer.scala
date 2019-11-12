@@ -1,4 +1,5 @@
 package graphql
+import Modules.{ ConfigurationModule, NemModule }
 import caliban.schema.{ ArgBuilder, GenericSchema, Schema }
 import caliban.GraphQL._
 import caliban.RootResolver
@@ -36,7 +37,8 @@ object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
       configuration.mongoConf.database,
       configuration.mongoConf.userCollection
     )
-    service <- HanamuraService.make(userCollection)
+    nemService <- NemModule.factory.nemService("http://103.3.60.174:3000")
+    service    <- HanamuraService.make(userCollection, nemService)
     interpreter = graphQL(
       RootResolver(
         Queries(service.sayHello,
