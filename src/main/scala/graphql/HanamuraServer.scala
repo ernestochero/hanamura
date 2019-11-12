@@ -34,7 +34,7 @@ object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
       configuration.mongoConf.database,
       configuration.mongoConf.userCollection
     )
-    nemService <- NemModule.factory.nemService("http://103.3.60.174:3000")
+    nemService <- NemModule.factory.nemService("http://54.187.97.142:3000")
     service    <- HanamuraService.make(userCollection, nemService)
     interpreter = graphQL(
       RootResolver(
