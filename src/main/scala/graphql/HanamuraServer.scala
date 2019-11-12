@@ -2,8 +2,7 @@ package graphql
 import Modules.{ ConfigurationModule, NemModule }
 import caliban.schema.{ ArgBuilder, GenericSchema, Schema }
 import caliban.GraphQL._
-import caliban.RootResolver
-import com.typesafe.config.ConfigFactory
+import caliban.{ Http4sAdapter, RootResolver }
 import mongodb.Mongo
 import org.http4s.implicits._
 import org.http4s.server.Router
@@ -14,7 +13,6 @@ import zio.{ RIO, ZIO }
 import zio.clock.Clock
 import zio.console.{ Console, putStrLn }
 import zio.interop.catz._
-import caliban.Http4sAdapter
 import models.User
 import zio.blocking.Blocking
 import zio.random.Random
@@ -22,15 +20,14 @@ import zio.system.System
 
 import scala.language.higherKinds
 object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
-  val config = ConfigFactory.load()
   type HanamuraTask[A] = RIO[Console with Clock, A]
-
   case class DatabaseConnection(conn: String = "test connection")
-  implicit val objectIdSchema     = Schema.stringSchema.contramap[ObjectId](_.toHexString)
-  implicit val objectIdArgBuilder = ArgBuilder.string.map(new ObjectId(_))
+  implicit val objectIdSchema: Schema[Any, ObjectId] =
+    Schema.stringSchema.contramap[ObjectId](_.toHexString)
+  implicit val objectIdArgBuilder: ArgBuilder[ObjectId] = ArgBuilder.string.map(new ObjectId(_))
 
   override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] = program
-  val logic: ZIO[zio.ZEnv with ConfigurationModule, Nothing, Int] = (for {
+  val logic: ZIO[zio.ZEnv with ConfigurationModule with NemModule, Nothing, Int] = (for {
     configuration <- ConfigurationModule.factory.configuration
     userCollection <- Mongo.setupMongoConfiguration[User](
       configuration.mongoConf.uri,
@@ -43,7 +40,8 @@ object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
       RootResolver(
         Queries(service.sayHello,
                 service.getUserFromDatabase,
-                args => service.getUserFromDatabase(args.id)),
+                args => service.getUserFromDatabase(args.id),
+                service.getGenerationHashFromBlockGenesis),
         Mutations(args => service.addUser(args.name)),
         Subscriptions(service.userAddedEvent)
       )
@@ -61,7 +59,8 @@ object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
       .useForever
   } yield 0).catchAll(err => putStrLn(err.toString).as(1))
   private val program = logic.provideSome[zio.ZEnv] { env =>
-    new System with Clock with Console with Blocking with Random with ConfigurationModule.Live {
+    new System with Clock with Console with Blocking with Random with ConfigurationModule.Live
+    with NemModule.Live {
       override val system: System.Service[Any]     = env.system
       override val clock: Clock.Service[Any]       = env.clock
       override val console: Console.Service[Any]   = env.console

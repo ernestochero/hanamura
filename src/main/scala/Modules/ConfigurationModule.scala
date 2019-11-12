@@ -2,6 +2,7 @@ package Modules
 
 import Modules.ConfigurationModule._
 import pureconfig._
+import pureconfig.generic.auto._
 import zio.ZIO
 trait ConfigurationModule {
   val configurationModule: Service[Any]

@@ -7,7 +7,6 @@ import org.mongodb.scala.bson.collection.immutable.Document
 import zio.console.Console
 import zio.{ IO, Queue, RIO, Ref, Task, UIO, ZIO }
 import commons.Transformers._
-import io.nem.sdk.model.blockchain.BlockInfo
 import zio.stream.ZStream
 
 import scala.concurrent.{ ExecutionContext, Future }
@@ -55,8 +54,8 @@ class HanamuraService(userCollection: Ref[MongoCollection[User]],
     } yield user
   }
 
-  def getBlockGenesisFromBC: ZIO[Any, Throwable, BlockInfo] =
-    nemService.get.flatMap(_.getBlockGenesis)
+  def getGenerationHashFromBlockGenesis: ZIO[Any, Throwable, String] =
+    nemService.get.flatMap(_.getGenerationHashFromBlockGenesis)
 
   def userAddedEvent: ZStream[Any, Nothing, String] = ZStream.unwrap {
     for {

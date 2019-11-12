@@ -1,7 +1,7 @@
 package graphql
 import caliban.schema.Annotations.GQLDescription
 import models.User
-import zio.{ RIO, Task }
+import zio.{ RIO, Task, ZIO }
 import zio.console.Console
 
 case class idArg(id: String)
@@ -12,5 +12,7 @@ case class Queries(
   @GQLDescription("Hanamura return all users form database")
   getUsers: Task[List[User]],
   @GQLDescription("Hanamura return a user by id")
-  getUser: idArg => RIO[Console, Option[User]]
+  getUser: idArg => RIO[Console, Option[User]],
+  @GQLDescription("Hanamura return a blockGenesis from BlockChain")
+  getBlockGenesis: ZIO[Any, Throwable, String]
 )
