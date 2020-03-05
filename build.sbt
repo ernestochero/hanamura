@@ -20,14 +20,14 @@ val catsDependencies = Seq(
 )
 
 libraryDependencies ++= Seq(
-  "io.nem" % "sdk-vertx-client" % "0.13.0-SNAPSHOT" changing(),
+  "io.nem" % "sdk-vertx-client" % "0.16.2" changing(),
   "io.circe" %%	"circe-core" % "0.9.3",
   "io.circe" %% "circe-optics" % "0.9.3",
   "org.mongodb.scala" %% "mongo-scala-driver" % "2.1.0",
   "com.typesafe" % "config"               % "1.3.3",
-  "com.github.ghostdogpr" %% "caliban" % "0.1.1",
-  "com.github.ghostdogpr" %% "caliban-http4s" % "0.1.1",
-  "dev.zio"       %% "zio-interop-cats"    % "2.0.0.0-RC6",
+  "com.github.ghostdogpr" %% "caliban" % "0.6.0",
+  "com.github.ghostdogpr" %% "caliban-http4s" % "0.6.0",
+  "dev.zio"       %% "zio-interop-cats"    % "2.0.0.0-RC11",
   "org.typelevel" %% "cats-effect"         % "2.0.0",
   "org.http4s"    %% "http4s-dsl"          % "0.20.6",
   "org.http4s"    %% "http4s-circe"        % "0.20.6",

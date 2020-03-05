@@ -1,5 +1,5 @@
 package graphql
-import Modules.{ ConfigurationModule, NemModule }
+import modules.{ ConfigurationModule, NemModule }
 import caliban.schema.{ ArgBuilder, GenericSchema, Schema }
 import caliban.GraphQL._
 import caliban.{ Http4sAdapter, RootResolver }
@@ -14,10 +14,8 @@ import zio.clock.Clock
 import zio.console.{ Console, putStrLn }
 import zio.interop.catz._
 import models.User
-import zio.blocking.Blocking
-import zio.random.Random
-import zio.system.System
-
+import modules.configurationModule.ConfigurationModule
+import modules.nemModule.NemModule
 import scala.language.higherKinds
 object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
   type HanamuraTask[A] = RIO[Console with Clock, A]
@@ -58,14 +56,7 @@ object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
       .toManaged
       .useForever
   } yield 0).catchAll(err => putStrLn(err.toString).as(1))
-  private val program = logic.provideSome[zio.ZEnv] { env =>
-    new System with Clock with Console with Blocking with Random with ConfigurationModule.Live
-    with NemModule.Live {
-      override val system: System.Service[Any]     = env.system
-      override val clock: Clock.Service[Any]       = env.clock
-      override val console: Console.Service[Any]   = env.console
-      override val blocking: Blocking.Service[Any] = env.blocking
-      override val random: Random.Service[Any]     = env.random
-    }
-  }
+
+  val liveEnvironments = zio.ZEnv.live ++ ConfigurationModule.live ++ NemModule.live
+  private val program  = logic.provideLayer(liveEnvironments)
 }

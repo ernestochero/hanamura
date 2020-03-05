@@ -1,5 +1,5 @@
 package graphql
-import Modules.NemModule.NemService
+import modules.NemModule.NemService
 import models.User
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.ObjectId
