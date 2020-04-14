@@ -24,4 +24,6 @@ package object configurationModule {
         }
       }
   }
+  def configuration: ZIO[ConfigurationModule, Throwable, ConfigurationModule.Configuration] =
+    ZIO.accessM[ConfigurationModule](_.get.configuration)
 }

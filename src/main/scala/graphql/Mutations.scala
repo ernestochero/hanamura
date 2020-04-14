@@ -1,8 +1,8 @@
 package graphql
 
+import graphql.HanamuraService.HanamuraServiceType
 import models.User
-import zio.RIO
-import zio.console.Console
+import zio.ZIO
 
 case class nameArg(name: String)
-case class Mutations(addUser: nameArg => RIO[Console, User])
+case class Mutations(addUser: nameArg => ZIO[HanamuraServiceType, Throwable, User])
