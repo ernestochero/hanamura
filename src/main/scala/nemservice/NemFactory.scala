@@ -3,7 +3,6 @@ package nemservice
 import java.math.BigInteger
 
 import io.nem.sdk.api._
-import io.nem.sdk.infrastructure.Listener
 import io.nem.sdk.infrastructure.vertx.RepositoryFactoryVertxImpl
 import commons.Transformers._
 import io.nem.sdk.model.blockchain.BlockInfo

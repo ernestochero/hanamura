@@ -12,8 +12,7 @@ import io.nem.sdk.model.mosaic.{ MosaicId, NetworkCurrencyMosaic }
 import io.nem.sdk.model.transaction.{ TransactionAnnounceResponse, TransferTransactionFactory }
 import io.reactivex.Observable
 import commons.Transformers._
-import io.nem.sdk.infrastructure.Listener
-import zio.{ DefaultRuntime, Task }
+import zio.Task
 
 object Factory {
   val repositoryFactory: RepositoryFactory = new RepositoryFactoryVertxImpl(
@@ -62,7 +61,7 @@ object App {
     //createMosaic()
     //transactionInfo()
 
-    def transactionInfo(): Unit = {
+    /*    def transactionInfo(): Unit = {
       println("#### transaction info ####")
       val eventualResult =
         transactionRepository.getTransactionStatus(
@@ -72,7 +71,7 @@ object App {
         println("transactions detail")
         println(s"### detail : ${in.getStatus}")
       })
-    }
+    }*/
 
     def createMosaic(): Unit = {
       println("#### creating mosaics ####")

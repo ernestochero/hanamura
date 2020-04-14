@@ -1,76 +1,101 @@
 package graphql
-import Modules.NemModule.NemService
+
 import models.User
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.ObjectId
 import org.mongodb.scala.bson.collection.immutable.Document
-import zio.console.Console
-import zio.{ IO, Queue, RIO, Ref, Task, UIO, ZIO }
+import zio.{ Has, Queue, Ref, Task, UIO, ZIO, ZLayer }
 import commons.Transformers._
 import zio.stream.ZStream
+import scala.language.higherKinds
 
 import scala.concurrent.{ ExecutionContext, Future }
-class HanamuraService(userCollection: Ref[MongoCollection[User]],
-                      nemService: Ref[NemService],
-                      subscribers: Ref[List[Queue[String]]]) {
-  implicit val ec: ExecutionContext = ExecutionContext.global
-  def sayHello: RIO[Console, String] =
-    Future.successful("I'm Hanamura your backend service").toRIO
-  def getUserFromDatabase: Task[List[User]] =
-    userCollection.get.flatMap(c => {
-      ZIO.fromFuture(
-        implicit ec => c.find().toFuture().recoverWith { case e => Future.failed(e) }.map(_.toList)
-      )
-    })
-
-  def getUserFromDatabase(id: String): RIO[Console, Option[User]] = {
-    val _id    = new ObjectId(id)
-    val filter = Document("_id" -> _id)
-    userCollection.get.flatMap(
-      _.find(filter).toFuture().recoverWith { case e => Future.failed(e) }.map(_.headOption).toRIO
-    )
-  }
-
-  def addUser(name: String): RIO[Console, User] = {
-    val user = User(name = name)
-    val res = userCollection.get.flatMap(
-      _.insertOne(user)
-        .toFuture()
-        .recoverWith { case e => Future.failed(e) }
-        .map(_ => user)
-        .toRIO
-    )
-    for {
-      user <- res
-      _ <- subscribers.get.flatMap(
-        // add item to all subscribers
-        UIO.foreach(_)(
-          queue =>
-            queue
-              .offer(user._id.toHexString)
-              .onInterrupt(subscribers.update(_.filterNot(_ == queue))) // if queue was shutdown, remove from subscribers
-        )
-      )
-    } yield user
-  }
-
-  def getGenerationHashFromBlockGenesis: ZIO[Any, Throwable, String] =
-    nemService.get.flatMap(_.getGenerationHashFromBlockGenesis)
-
-  def userAddedEvent: ZStream[Any, Nothing, String] = ZStream.unwrap {
-    for {
-      queue <- Queue.unbounded[String]
-      _     <- subscribers.update(queue :: _)
-    } yield ZStream.fromQueue(queue)
-  }
-
-}
-
 object HanamuraService {
-  def make(userCollection: MongoCollection[User], nemService: NemService): UIO[HanamuraService] =
-    for {
-      state       <- Ref.make(userCollection)
-      nem         <- Ref.make(nemService)
-      subscribers <- Ref.make(List.empty[Queue[String]])
-    } yield new HanamuraService(state, nem, subscribers)
+  type HanamuraServiceType = Has[Service]
+  trait Service {
+    def sayHello: UIO[String]
+    def getUsersFromDatabase: Task[List[User]]
+    def getUserFromDatabase(id: String): Task[Option[User]]
+    def addUser(name: String): Task[User]
+    // def getGenerationHashFromBlockGenesis(endPoint: String): ZIO[NemModule, Throwable, String]
+    def userAddedEvent: ZStream[Any, Nothing, String]
+  }
+  def sayHello: ZIO[HanamuraServiceType, Nothing, String] =
+    ZIO.accessM[HanamuraServiceType](_.get.sayHello)
+
+  def getUsersFromDatabase: ZIO[HanamuraServiceType, Throwable, List[User]] =
+    ZIO.accessM[HanamuraServiceType](_.get.getUsersFromDatabase)
+
+  def getUserFromDatabase(id: String): ZIO[HanamuraServiceType, Throwable, Option[User]] =
+    ZIO.accessM[HanamuraServiceType](_.get.getUserFromDatabase(id))
+
+  def addUser(name: String): ZIO[HanamuraServiceType, Throwable, User] =
+    ZIO.accessM[HanamuraServiceType](_.get.addUser(name))
+
+  def userAddedEvent =
+    ZStream.accessStream[HanamuraServiceType](_.get.userAddedEvent)
+
+  def make(userCollection: MongoCollection[User]): ZLayer[Any, Nothing, Has[Service]] =
+    ZLayer.fromEffect {
+      for {
+        userCollection <- Ref.make(userCollection)
+        subscribers    <- Ref.make(List.empty[Queue[String]])
+      } yield
+        new Service {
+          implicit val ec: ExecutionContext  = ExecutionContext.global
+          override def sayHello: UIO[String] = ZIO.succeed("I'm Hanamura your backend service")
+          override def getUsersFromDatabase: Task[List[User]] =
+            userCollection.get.flatMap(c => {
+              ZIO.fromFuture(
+                implicit ec =>
+                  c.find().toFuture().recoverWith { case e => Future.failed(e) }.map(_.toList)
+              )
+            })
+          override def getUserFromDatabase(id: String): Task[Option[User]] = {
+            val _id    = new ObjectId(id)
+            val filter = Document("_id" -> _id)
+            userCollection.get.flatMap(
+              _.find(filter)
+                .toFuture()
+                .recoverWith { case e => Future.failed(e) }
+                .map(_.headOption)
+                .toRIO
+            )
+          }
+          override def addUser(name: String): Task[User] = {
+            val user = User(name = name)
+            val res = userCollection.get.flatMap(
+              _.insertOne(user)
+                .toFuture()
+                .recoverWith { case e => Future.failed(e) }
+                .map(_ => user)
+                .toRIO
+            )
+            for {
+              user <- res
+              _ <- subscribers.get.flatMap(
+                // add item to all subscribers
+                UIO.foreach(_)(
+                  queue =>
+                    queue
+                      .offer(user._id.toHexString)
+                      .onInterrupt(subscribers.update(_.filterNot(_ == queue))) // if queue was shutdown, remove from subscribers
+                )
+              )
+            } yield user
+          }
+
+          /*          override def getGenerationHashFromBlockGenesis(
+            endpoint: String
+          ): ZIO[NemModule, Throwable, String] =
+            ZIO.accessM[NemModule](_.get.getGenerationHashFromBlockGenesis(endpoint))*/
+
+          override def userAddedEvent: ZStream[Any, Nothing, String] = ZStream.unwrap {
+            for {
+              queue <- Queue.unbounded[String]
+              _     <- subscribers.update(queue :: _)
+            } yield ZStream.fromQueue(queue)
+          }
+        }
+    }
 }
