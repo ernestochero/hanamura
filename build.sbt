@@ -8,11 +8,11 @@ scalaVersion := "2.12.10"
 
 scalacOptions ++= Seq("-deprecation", "-feature")
 scalacOptions ++= Seq("-Ypartial-unification")
-resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+// resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 updateOptions := updateOptions.value.withLatestSnapshots(false)
 val calibanVersion = "0.7.4"
 libraryDependencies ++= Seq(
-  "io.nem" % "sdk-vertx-client" % "0.16.2" changing(),
+  "io.nem" % "symbol-sdk-vertx-client" % "0.17.1",
   "io.circe" %%	"circe-core" % "0.9.3",
   "io.circe" %% "circe-optics" % "0.9.3",
   "org.mongodb.scala" %% "mongo-scala-driver" % "2.1.0",
