@@ -11,23 +11,25 @@ import zio.clock.Clock
 import zio.console.{ Console, putStrLn }
 import zio.interop.catz._
 import models.User
-import modules.configurationModule.ConfigurationModule
-import modules.nemModule.NemModule
+import configuration.configurationService._
+import symbol.symbolService._
 import zio.blocking.Blocking
 import cats.effect.Blocker
 import zio._
+import symbol.SymbolNem
 object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
   type HanamuraTask[A] = RIO[ZEnv, A]
+  val symbolHost                                                    = "http://localhost:3000"
   override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] = program
-  val logic: ZIO[zio.ZEnv with NemModule with ConfigurationModule, Nothing, Int] = (for {
-    configuration <- modules.configurationModule.configuration
+  val logic: ZIO[zio.ZEnv with ConfigurationModule, Nothing, Int] = (for {
+    conf <- buildConfiguration
     userCollection <- Mongo.setupMongoConfiguration[User](
-      configuration.mongoConf.uri,
-      configuration.mongoConf.database,
-      configuration.mongoConf.userCollection
+      conf.mongoConf.uri,
+      conf.mongoConf.database,
+      conf.mongoConf.userCollection
     )
-    nemService <- modules.nemModule.getGenerationHashFromBlockGenesis("http://54.187.97.142:3000")
-    _ = println(s"Block $nemService")
+    repositoryFactory <- SymbolNem.buildRepositoryFactory(symbolHost)
+    symbolLayer = SymbolService.make(repositoryFactory)
     _ <- HanamuraService
       .make(userCollection)
       .memoize
@@ -37,9 +39,10 @@ object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
             _ <- ZIO
               .access[Blocking](_.get.blockingExecutor.asEC)
               .map(Blocker.liftExecutionContext)
-            interpreter <- HanamuraApi.api.interpreter.map(_.provideCustomLayer(layer))
+            interpreter <- HanamuraApi.api.interpreter
+              .map(_.provideCustomLayer(layer ++ symbolLayer))
             _ <- BlazeServerBuilder[HanamuraTask]
-              .bindHttp(configuration.httpConf.port, configuration.httpConf.host)
+              .bindHttp(conf.httpConf.port, conf.httpConf.host)
               .withHttpApp(
                 Router[HanamuraTask](
                   "/api/graphql" -> CORS(Http4sAdapter.makeHttpService(interpreter)),
@@ -53,6 +56,6 @@ object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
       )
   } yield 0).catchAll(err => putStrLn(err.toString).as(1))
 
-  val liveEnvironments = zio.ZEnv.live ++ ConfigurationModule.live ++ NemModule.live
+  val liveEnvironments = zio.ZEnv.live ++ ConfigurationModule.live
   private val program  = logic.provideLayer(liveEnvironments)
 }

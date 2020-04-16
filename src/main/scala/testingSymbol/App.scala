@@ -1,10 +1,11 @@
-package nemservice
+package testingSymbol
 import io.nem.symbol.sdk.api._
 import io.nem.symbol.sdk.infrastructure.vertx.RepositoryFactoryVertxImpl
 import io.nem.symbol.sdk.model.blockchain.BlockInfo
 import io.nem.symbol.sdk.model.message.PlainMessage
 import io.nem.symbol.sdk.model.mosaic.MosaicId
 import commons.Transformers._
+import io.nem.symbol.sdk.model.account.{ AccountInfo, Address }
 import io.nem.symbol.sdk.model.network.NetworkType
 import zio.Task
 
@@ -17,6 +18,24 @@ object Factory {
   val transactionRepository: TransactionRepository = repositoryFactory.createTransactionRepository()
   val blockRepository: BlockRepository             = repositoryFactory.createBlockRepository()
   val mosaicRepository: MosaicRepository           = repositoryFactory.createMosaicRepository()
+}
+
+object AccountToTest {
+  import Factory._
+  val harvestNemesisAccount: Task[AccountInfo] = accountRepository
+    .getAccountInfo(
+      Address
+        .createFromPublicKey("B67370949581A3F6D97A4533665006F5ED05F60D164075EB8614A6DF9D6C39CB",
+                             NetworkType.TEST_NET)
+    )
+    .toTask
+  val myAccountToTest: Task[AccountInfo] = accountRepository
+    .getAccountInfo(
+      Address
+        .createFromPublicKey("2948F1862C6BD7A40D0C83B62FEF4278D9FEEDD25BF738AFCE246D532FA8775D",
+                             NetworkType.TEST_NET)
+    )
+    .toTask
 }
 
 object App {
@@ -91,10 +110,21 @@ object App {
 
   def main(args: Array[String]): Unit = {
     import zio._
-    val blockGenesis: Task[BlockInfo] =
-      blockRepository.getBlockByHeight(BigInteger.valueOf(1)).toFuture.toTask
+    import scala.collection.JavaConverters._
     val runtime = Runtime.default
-    //println(runtime.unsafeRunSync(blockGenesis.map(_.getBlockTransactionsHash)))
-    createAccountAndShowInformation()
+    val accountInfo: Task[AccountInfo] = accountRepository
+      .getAccountInfo(
+        Address
+          .createFromPublicKey("B67370949581A3F6D97A4533665006F5ED05F60D164075EB8614A6DF9D6C39CB",
+                               NetworkType.TEST_NET)
+      )
+      .toTask
+
+    runtime
+      .unsafeRun(accountInfo)
+      .getMosaics
+      .asScala
+      .foreach(m => println(s"${m.getAmount} -> ${m.getIdAsHex}"))
+
   }
 }

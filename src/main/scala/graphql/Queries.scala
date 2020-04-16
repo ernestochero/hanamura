@@ -2,8 +2,8 @@ package graphql
 import caliban.schema.Annotations.GQLDescription
 import graphql.HanamuraService.HanamuraServiceType
 import models.User
-import zio.{ RIO, Task, UIO, ZIO }
-import zio.console.Console
+import zio.ZIO
+import symbol.symbolService._
 
 case class idArg(id: String)
 
@@ -14,8 +14,6 @@ case class Queries(
   getUsers: ZIO[HanamuraServiceType, Throwable, List[User]],
   @GQLDescription("Hanamura return a user by id")
   getUser: idArg => ZIO[HanamuraServiceType, Throwable, Option[User]],
+  @GQLDescription("Hanamura says hello by Symbol")
+  getGenerationHashFromBlockGenesis: ZIO[SymbolType, Throwable, String]
 )
-
-/*
-@GQLDescription("Hanamura return a blockGenesis from BlockChain")
-getBlockGenesis: ZIO[Any, Throwable, String]*/
