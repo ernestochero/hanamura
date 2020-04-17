@@ -22,6 +22,7 @@ object Factory {
 
 object AccountToTest {
   import Factory._
+  // pretty Address : TBKIKY-O7VEPG-7I2XRJ-QG3VIV-B2JOVK-VBAEXZ-W2AB
   val harvestNemesisAccount: Task[AccountInfo] = accountRepository
     .getAccountInfo(
       Address
@@ -29,6 +30,8 @@ object AccountToTest {
                              NetworkType.TEST_NET)
     )
     .toTask
+
+  // pretty Address : TBT2F7-F5U3FL-L7K6S3-LBZIGK-J2HM2X-UOT7F7-QIM4
   val myAccountToTest: Task[AccountInfo] = accountRepository
     .getAccountInfo(
       Address
@@ -111,17 +114,11 @@ object App {
   def main(args: Array[String]): Unit = {
     import zio._
     import scala.collection.JavaConverters._
+    import AccountToTest._
     val runtime = Runtime.default
-    val accountInfo: Task[AccountInfo] = accountRepository
-      .getAccountInfo(
-        Address
-          .createFromPublicKey("B67370949581A3F6D97A4533665006F5ED05F60D164075EB8614A6DF9D6C39CB",
-                               NetworkType.TEST_NET)
-      )
-      .toTask
-
+    println(runtime.unsafeRun(myAccountToTest).getAddress.pretty())
     runtime
-      .unsafeRun(accountInfo)
+      .unsafeRun(myAccountToTest)
       .getMosaics
       .asScala
       .foreach(m => println(s"${m.getAmount} -> ${m.getIdAsHex}"))
