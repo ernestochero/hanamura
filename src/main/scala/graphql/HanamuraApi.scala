@@ -5,11 +5,17 @@ import caliban.schema.{ ArgBuilder, GenericSchema, Schema }
 import caliban.GraphQL.graphQL
 import graphql.HanamuraService.HanamuraServiceType
 import io.nem.symbol.sdk.model.account.{ AccountInfo, Address }
+import io.nem.symbol.sdk.model.blockchain.BlockDuration
 import org.mongodb.scala.bson.ObjectId
 import zio.clock.Clock
 import zio.console.Console
 import symbol.symbolService._
 object HanamuraApi extends GenericSchema[HanamuraServiceType with SymbolType] {
+
+  implicit val blockDurationSchema: Schema[Any, BlockDuration] =
+    Schema.longSchema.contramap[BlockDuration](_.getDuration)
+  implicit val blockDurationArgBuilder: ArgBuilder[BlockDuration] =
+    ArgBuilder.long.map(new BlockDuration(_))
 
   implicit val addressIdSchema: Schema[Any, Address] =
     Schema.stringSchema.contramap[Address](_.pretty())

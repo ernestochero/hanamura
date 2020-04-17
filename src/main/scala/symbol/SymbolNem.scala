@@ -25,7 +25,31 @@ object SymbolNem {
   def createAccount(implicit networkType: NetworkType): Account =
     Account.generateNewAccount(NetworkType.TEST_NET)
 
-  def createMosaic(
+  def createMosaicTransaction(
+    account: Account,
+    blockDuration: BlockDuration,
+    isSupplyMutable: Boolean,
+    isTransferable: Boolean,
+    isRestrictable: Boolean,
+    divisibility: Int,
+    delta: Int
+  )(implicit networkType: NetworkType): MosaicSupplyChangeTransaction = {
+    val mosaicDefinitionTransaction = buildMosaicDefinitionTransaction(
+      account,
+      blockDuration,
+      isSupplyMutable,
+      isTransferable,
+      isRestrictable,
+      divisibility
+    )
+    buildMosaicSupplyChangeTransaction(
+      mosaicDefinitionTransaction,
+      delta,
+      divisibility
+    )
+  }
+
+  def buildMosaicDefinitionTransaction(
     account: Account,
     blockDuration: BlockDuration,
     isSupplyMutable: Boolean,
@@ -46,15 +70,15 @@ object SymbolNem {
       .build()
   }
 
-  def mosaicSupplyChangeTransaction(
-    mosaicDefinitionTransactionFactory: MosaicDefinitionTransactionFactory,
+  def buildMosaicSupplyChangeTransaction(
+    mosaicDefinitionTransaction: MosaicDefinitionTransaction,
     delta: Int,
     divisibility: Int
   )(implicit networkType: NetworkType): MosaicSupplyChangeTransaction =
     MosaicSupplyChangeTransactionFactory
       .create(
         networkType,
-        mosaicDefinitionTransactionFactory.getMosaicId,
+        mosaicDefinitionTransaction.getMosaicId,
         MosaicSupplyChangeActionType.INCREASE,
         BigDecimal.valueOf(delta * Math.pow(10, divisibility)).toBigInteger
       )
