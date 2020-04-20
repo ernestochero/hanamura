@@ -62,6 +62,20 @@ object SymbolNem {
       )
       .build()
 
+  def modifyMosaicSupply(mosaicId: MosaicId,
+                         divisibility: Int,
+                         delta: Int,
+                         supplyChangeActionType: MosaicSupplyChangeActionType,
+                         networkType: NetworkType): MosaicSupplyChangeTransaction =
+    MosaicSupplyChangeTransactionFactory
+      .create(
+        networkType,
+        mosaicId,
+        supplyChangeActionType,
+        BigDecimal.valueOf(delta * Math.pow(10, divisibility)).toBigInteger,
+      )
+      .build()
+
   def aggregateTransaction(transactions: List[Transaction],
                            feeAmount: Long,
                            networkType: NetworkType): AggregateTransaction =
@@ -74,9 +88,9 @@ object SymbolNem {
       .build()
 
   def signTransaction(account: Account,
-                      aggregateTransaction: AggregateTransaction,
+                      transaction: Transaction,
                       generationHash: String): SignedTransaction =
-    account.sign(aggregateTransaction, generationHash)
+    account.sign(transaction, generationHash)
 
   def announceTransaction(transactionRepository: TransactionRepository,
                           signedTransaction: SignedTransaction): Task[TransactionAnnounceResponse] =

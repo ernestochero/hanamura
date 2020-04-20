@@ -4,11 +4,10 @@ import io.nem.symbol.sdk.model.account.{ Account, Address }
 import zio.{ Has, Queue, Ref, ZIO, ZLayer }
 import commons.Transformers._
 import io.nem.symbol.sdk.model.blockchain.BlockDuration
-import io.nem.symbol.sdk.model.network.NetworkType
 import models.HanamuraMessages.{ HanamuraResponse, HanamuraSuccessResponse }
-
 import scala.collection.JavaConverters._
 import commons.Constants._
+import io.nem.symbol.sdk.model.mosaic.{ MosaicId, MosaicSupplyChangeActionType }
 package object symbolService {
   type SymbolType = Has[SymbolService.Service]
   object SymbolService {
@@ -23,6 +22,13 @@ package object symbolService {
         isRestrictable: Boolean,
         divisibility: Int,
         delta: Int
+      ): ZIO[SymbolType, Throwable, HanamuraResponse]
+      def modifyMosaicSupply(
+        accountAddress: Address,
+        mosaicId: MosaicId,
+        divisibility: Int,
+        delta: Int,
+        supplyChangeActionType: MosaicSupplyChangeActionType
       ): ZIO[SymbolType, Throwable, HanamuraResponse]
     }
     def getGenerationHashFromBlockGenesis: ZIO[SymbolType, Throwable, String] =
@@ -47,6 +53,22 @@ package object symbolService {
           isRestrictable,
           divisibility,
           delta
+        )
+      )
+    def modifyMosaicSupply(
+      accountAddress: Address,
+      mosaicId: MosaicId,
+      divisibility: Int,
+      delta: Int,
+      supplyChangeActionType: MosaicSupplyChangeActionType
+    ): ZIO[SymbolType, Throwable, HanamuraResponse] =
+      ZIO.accessM[SymbolType](
+        _.get.modifyMosaicSupply(
+          accountAddress,
+          mosaicId,
+          divisibility,
+          delta,
+          supplyChangeActionType
         )
       )
 
@@ -116,10 +138,42 @@ package object symbolService {
                 transactionRepository = repositoryFactory.createTransactionRepository()
                 announcedTransaction <- SymbolNem.announceTransaction(transactionRepository,
                                                                       signedTransaction)
-              } yield {
+              } yield
                 HanamuraSuccessResponse(responseMessage = s"${announcedTransaction.getMessage}")
-              }
 
+            override def modifyMosaicSupply(
+              accountAddress: Address,
+              mosaicId: MosaicId,
+              divisibility: Int,
+              delta: Int,
+              supplyChangeActionType: MosaicSupplyChangeActionType
+            ): ZIO[SymbolType, Throwable, HanamuraResponse] =
+              for {
+                repositoryFactory <- repositoryFactoryRef.get
+                networkType       <- repositoryFactory.getNetworkType.toTask
+                // find the privateKey on DB with the address account
+                privateKey = "291D8F1111DE464C1DACF5CDFA722C104F458C7055D1119078018565EE76626A"
+                account    = Account.createFromPrivateKey(privateKey, networkType)
+                modifyMosaicSupplyTransaction = SymbolNem.modifyMosaicSupply(
+                  mosaicId,
+                  divisibility,
+                  delta,
+                  supplyChangeActionType,
+                  networkType
+                )
+                mosaicTransactions = List(
+                  modifyMosaicSupplyTransaction.toAggregate(account.getPublicAccount),
+                )
+                transaction = SymbolNem.aggregateTransaction(mosaicTransactions,
+                                                             mosaicFee,
+                                                             networkType)
+                generationHash <- getGenerationHashFromBlockGenesis
+                signedTransaction     = SymbolNem.signTransaction(account, transaction, generationHash)
+                transactionRepository = repositoryFactory.createTransactionRepository()
+                announcedTransaction <- SymbolNem.announceTransaction(transactionRepository,
+                                                                      signedTransaction)
+              } yield
+                HanamuraSuccessResponse(responseMessage = s"${announcedTransaction.getMessage}")
           }
       }
   }

@@ -4,13 +4,35 @@ import caliban.{ GraphQL, RootResolver }
 import caliban.schema.{ ArgBuilder, GenericSchema, Schema }
 import caliban.GraphQL.graphQL
 import graphql.HanamuraService.HanamuraServiceType
-import io.nem.symbol.sdk.model.account.{ AccountInfo, Address }
+import io.nem.symbol.sdk.model.account.Address
 import io.nem.symbol.sdk.model.blockchain.BlockDuration
+import io.nem.symbol.sdk.model.mosaic.{ MosaicId, MosaicSupplyChangeActionType }
 import org.mongodb.scala.bson.ObjectId
 import zio.clock.Clock
 import zio.console.Console
 import symbol.symbolService._
 object HanamuraApi extends GenericSchema[HanamuraServiceType with SymbolType] {
+
+  implicit val supplyChangeActionTypeSchema: Schema[Any, MosaicSupplyChangeActionType] =
+    Schema
+      .gen[models.SupplyActionType]
+      .contramap[MosaicSupplyChangeActionType](_.getValue match {
+        case 1 => models.SupplyActionType.INCREASE
+        case 0 => models.SupplyActionType.DECREASE
+        case _ => throw new Exception("Incorrect number to create SupplyActionType")
+      })
+  implicit val supplyChangeActionTypeArgBuilder: ArgBuilder[MosaicSupplyChangeActionType] =
+    ArgBuilder.gen[models.SupplyActionType].map {
+      case models.SupplyActionType.INCREASE => MosaicSupplyChangeActionType.INCREASE
+      case models.SupplyActionType.DECREASE => MosaicSupplyChangeActionType.DECREASE
+      case _ =>
+        throw new Exception("Incorrect SupplyActionType to create MosaicSupplyChangeActionType")
+    }
+
+  implicit val mosaicIdSchema: Schema[Any, MosaicId] =
+    Schema.stringSchema.contramap[MosaicId](_.getIdAsHex)
+  implicit val mosaicIdArgBuilder: ArgBuilder[MosaicId] =
+    ArgBuilder.string.map(new MosaicId(_))
 
   implicit val blockDurationSchema: Schema[Any, BlockDuration] =
     Schema.longSchema.contramap[BlockDuration](_.getDuration)
@@ -44,6 +66,14 @@ object HanamuraApi extends GenericSchema[HanamuraServiceType with SymbolType] {
               args.isRestrictable,
               args.divisibility,
               args.delta
+          ),
+          args =>
+            SymbolService.modifyMosaicSupply(
+              args.accountAddress,
+              args.mosaicId,
+              args.divisibility,
+              args.delta,
+              args.supplyChangeActionType
           )
         ),
         Mutations(
