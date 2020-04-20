@@ -8,7 +8,7 @@ import io.nem.symbol.sdk.model.network.NetworkType
 import models.HanamuraMessages.{ HanamuraResponse, HanamuraSuccessResponse }
 
 import scala.collection.JavaConverters._
-
+import commons.Constants._
 package object symbolService {
   type SymbolType = Has[SymbolService.Service]
   object SymbolService {
@@ -29,16 +29,34 @@ package object symbolService {
       ZIO.accessM[SymbolType](_.get.getGenerationHashFromBlockGenesis)
     def getAccountInfo(address: Address): ZIO[SymbolType, Throwable, models.AccountInformation] =
       ZIO.accessM[SymbolType](_.get.getAccountInfo(address))
+    def createMosaic(
+      accountAddress: Address,
+      blockDuration: BlockDuration,
+      isSupplyMutable: Boolean,
+      isTransferable: Boolean,
+      isRestrictable: Boolean,
+      divisibility: Int,
+      delta: Int
+    ): ZIO[SymbolType, Throwable, HanamuraResponse] =
+      ZIO.accessM[SymbolType](
+        _.get.createMosaic(
+          accountAddress,
+          blockDuration,
+          isSupplyMutable,
+          isTransferable,
+          isRestrictable,
+          divisibility,
+          delta
+        )
+      )
 
     def make(repositoryFactory: RepositoryFactory): ZLayer[Any, Nothing, Has[Service]] =
       ZLayer.fromEffect {
         for {
-          networkType          <- repositoryFactory.getNetworkType.toTask
           repositoryFactoryRef <- Ref.make(repositoryFactory)
           subscribers          <- Ref.make(List.empty[Queue[String]])
         } yield
           new Service {
-            implicit val implicitNetworkType: NetworkType = networkType
             override def getGenerationHashFromBlockGenesis: ZIO[SymbolType, Throwable, String] =
               for {
                 repositoryFactory <- repositoryFactoryRef.get
@@ -67,19 +85,33 @@ package object symbolService {
                                       delta: Int): ZIO[SymbolType, Throwable, HanamuraResponse] =
               for {
                 repositoryFactory <- repositoryFactoryRef.get
+                networkType       <- repositoryFactory.getNetworkType.toTask
+                // find the privateKey on DB with the address account
                 privateKey = "291D8F1111DE464C1DACF5CDFA722C104F458C7055D1119078018565EE76626A"
                 account    = Account.createFromPrivateKey(privateKey, networkType)
-                mosaicTransaction = SymbolNem.createMosaicTransaction(
+                mosaicDefinitionTransaction = SymbolNem.buildMosaicDefinitionTransaction(
                   account,
                   blockDuration,
                   isSupplyMutable,
                   isTransferable,
                   isRestrictable,
                   divisibility,
-                  delta
+                  networkType
+                )
+                mosaicSupplyChangeTransaction = SymbolNem.buildMosaicSupplyChangeTransaction(
+                  mosaicDefinitionTransaction,
+                  delta,
+                  divisibility,
+                  networkType
+                )
+                mosaicTransactions = List(
+                  mosaicDefinitionTransaction.toAggregate(account.getPublicAccount),
+                  mosaicSupplyChangeTransaction.toAggregate(account.getPublicAccount)
                 )
                 generationHash <- getGenerationHashFromBlockGenesis
-                transaction           = SymbolNem.aggregateTransaction(List(mosaicTransaction), 1000)
+                transaction = SymbolNem.aggregateTransaction(mosaicTransactions,
+                                                             mosaicFee,
+                                                             networkType)
                 signedTransaction     = SymbolNem.signTransaction(account, transaction, generationHash)
                 transactionRepository = repositoryFactory.createTransactionRepository()
                 announcedTransaction <- SymbolNem.announceTransaction(transactionRepository,

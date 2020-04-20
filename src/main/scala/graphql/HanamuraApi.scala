@@ -34,7 +34,17 @@ object HanamuraApi extends GenericSchema[HanamuraServiceType with SymbolType] {
           HanamuraService.getUsersFromDatabase,
           args => HanamuraService.getUserFromDatabase(args.id),
           SymbolService.getGenerationHashFromBlockGenesis,
-          args => SymbolService.getAccountInfo(args.address)
+          args => SymbolService.getAccountInfo(args.address),
+          args =>
+            SymbolService.createMosaic(
+              args.accountAddress,
+              args.blockDuration,
+              args.isSupplyMutable,
+              args.isTransferable,
+              args.isRestrictable,
+              args.divisibility,
+              args.delta
+          )
         ),
         Mutations(
           args => HanamuraService.addUser(args.name)

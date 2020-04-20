@@ -32,6 +32,7 @@ object AccountToTest {
     .toTask
 
   // pretty Address : TBT2F7-F5U3FL-L7K6S3-LBZIGK-J2HM2X-UOT7F7-QIM4
+  // privateKey : 291D8F1111DE464C1DACF5CDFA722C104F458C7055D1119078018565EE76626A
   val myAccountToTest: Task[AccountInfo] = accountRepository
     .getAccountInfo(
       Address
