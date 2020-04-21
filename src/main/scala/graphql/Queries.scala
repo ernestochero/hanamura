@@ -40,7 +40,11 @@ case class Queries(
   @GQLDescription("Symbol: Get AccountInfo by raw address")
   getAccountInfo: addressArg => ZIO[SymbolType, Throwable, models.AccountInformation],
   @GQLDescription("Symbol: create mosaic")
-  createMosaic: createMosaicArg => ZIO[SymbolType, Throwable, HanamuraResponse],
+  createMosaic: createMosaicArg => ZIO[SymbolType with HanamuraServiceType,
+                                       Throwable,
+                                       HanamuraResponse],
   @GQLDescription("Symbol: modify the supply amount of a mosaic")
-  modifyMosaicSupply: modifyMosaicSupplyArg => ZIO[SymbolType, Throwable, HanamuraResponse]
+  modifyMosaicSupply: modifyMosaicSupplyArg => ZIO[SymbolType with HanamuraServiceType,
+                                                   Throwable,
+                                                   HanamuraResponse]
 )

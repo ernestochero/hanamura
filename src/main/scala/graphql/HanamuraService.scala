@@ -6,9 +6,10 @@ import org.mongodb.scala.bson.ObjectId
 import org.mongodb.scala.bson.collection.immutable.Document
 import zio.{ Has, Queue, Ref, Task, UIO, ZIO, ZLayer }
 import commons.Transformers._
+import io.nem.symbol.sdk.model.account.Address
 import zio.stream.ZStream
-import scala.language.higherKinds
 
+import scala.language.higherKinds
 import scala.concurrent.{ ExecutionContext, Future }
 object HanamuraService {
   type HanamuraServiceType = Has[Service]
@@ -17,8 +18,8 @@ object HanamuraService {
     def getUsersFromDatabase: Task[List[User]]
     def getUserFromDatabase(id: String): Task[Option[User]]
     def addUser(name: String): Task[User]
-    // def getGenerationHashFromBlockGenesis(endPoint: String): ZIO[NemModule, Throwable, String]
     def userAddedEvent: ZStream[Any, Nothing, String]
+    def getPrivateKey(address: Address): ZIO[HanamuraServiceType, Nothing, String]
   }
   def sayHello: ZIO[HanamuraServiceType, Nothing, String] =
     ZIO.accessM[HanamuraServiceType](_.get.sayHello)
@@ -34,6 +35,9 @@ object HanamuraService {
 
   def userAddedEvent =
     ZStream.accessStream[HanamuraServiceType](_.get.userAddedEvent)
+
+  def getPrivateKey(address: Address): ZIO[HanamuraServiceType, Nothing, String] =
+    ZIO.accessM[HanamuraServiceType](_.get.getPrivateKey(address))
 
   def make(userCollection: MongoCollection[User]): ZLayer[Any, Nothing, Has[Service]] =
     ZLayer.fromEffect {
@@ -84,18 +88,16 @@ object HanamuraService {
               )
             } yield user
           }
-
-          /*          override def getGenerationHashFromBlockGenesis(
-            endpoint: String
-          ): ZIO[NemModule, Throwable, String] =
-            ZIO.accessM[NemModule](_.get.getGenerationHashFromBlockGenesis(endpoint))*/
-
           override def userAddedEvent: ZStream[Any, Nothing, String] = ZStream.unwrap {
             for {
               queue <- Queue.unbounded[String]
               _     <- subscribers.update(queue :: _)
             } yield ZStream.fromQueue(queue)
           }
+
+          // implement method to getPrivateKey from DB
+          override def getPrivateKey(address: Address): ZIO[HanamuraServiceType, Nothing, String] =
+            ZIO.succeed("291D8F1111DE464C1DACF5CDFA722C104F458C7055D1119078018565EE76626A")
         }
     }
 }

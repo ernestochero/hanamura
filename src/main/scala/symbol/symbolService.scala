@@ -5,9 +5,12 @@ import zio.{ Has, Queue, Ref, ZIO, ZLayer }
 import commons.Transformers._
 import io.nem.symbol.sdk.model.blockchain.BlockDuration
 import models.HanamuraMessages.{ HanamuraResponse, HanamuraSuccessResponse }
+
 import scala.collection.JavaConverters._
 import commons.Constants._
+import graphql.HanamuraService.HanamuraServiceType
 import io.nem.symbol.sdk.model.mosaic.{ MosaicId, MosaicSupplyChangeActionType }
+import graphql._
 package object symbolService {
   type SymbolType = Has[SymbolService.Service]
   object SymbolService {
@@ -22,14 +25,14 @@ package object symbolService {
         isRestrictable: Boolean,
         divisibility: Int,
         delta: Int
-      ): ZIO[SymbolType, Throwable, HanamuraResponse]
+      ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse]
       def modifyMosaicSupply(
         accountAddress: Address,
         mosaicId: MosaicId,
         divisibility: Int,
         delta: Int,
         supplyChangeActionType: MosaicSupplyChangeActionType
-      ): ZIO[SymbolType, Throwable, HanamuraResponse]
+      ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse]
     }
     def getGenerationHashFromBlockGenesis: ZIO[SymbolType, Throwable, String] =
       ZIO.accessM[SymbolType](_.get.getGenerationHashFromBlockGenesis)
@@ -43,8 +46,8 @@ package object symbolService {
       isRestrictable: Boolean,
       divisibility: Int,
       delta: Int
-    ): ZIO[SymbolType, Throwable, HanamuraResponse] =
-      ZIO.accessM[SymbolType](
+    ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse] =
+      ZIO.accessM[SymbolType with HanamuraServiceType](
         _.get.createMosaic(
           accountAddress,
           blockDuration,
@@ -61,8 +64,8 @@ package object symbolService {
       divisibility: Int,
       delta: Int,
       supplyChangeActionType: MosaicSupplyChangeActionType
-    ): ZIO[SymbolType, Throwable, HanamuraResponse] =
-      ZIO.accessM[SymbolType](
+    ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse] =
+      ZIO.accessM[SymbolType with HanamuraServiceType](
         _.get.modifyMosaicSupply(
           accountAddress,
           mosaicId,
@@ -72,7 +75,9 @@ package object symbolService {
         )
       )
 
-    def make(repositoryFactory: RepositoryFactory): ZLayer[Any, Nothing, Has[Service]] =
+    def make(
+      repositoryFactory: RepositoryFactory
+    ) =
       ZLayer.fromEffect {
         for {
           repositoryFactoryRef <- Ref.make(repositoryFactory)
@@ -98,19 +103,20 @@ package object symbolService {
                   .toList
               } yield models.AccountInformation(address.pretty(), mosaics)
 
-            override def createMosaic(accountAddress: Address,
-                                      blockDuration: BlockDuration,
-                                      isSupplyMutable: Boolean,
-                                      isTransferable: Boolean,
-                                      isRestrictable: Boolean,
-                                      divisibility: Int,
-                                      delta: Int): ZIO[SymbolType, Throwable, HanamuraResponse] =
+            override def createMosaic(
+              accountAddress: Address,
+              blockDuration: BlockDuration,
+              isSupplyMutable: Boolean,
+              isTransferable: Boolean,
+              isRestrictable: Boolean,
+              divisibility: Int,
+              delta: Int
+            ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse] =
               for {
                 repositoryFactory <- repositoryFactoryRef.get
                 networkType       <- repositoryFactory.getNetworkType.toTask
-                // find the privateKey on DB with the address account
-                privateKey = "291D8F1111DE464C1DACF5CDFA722C104F458C7055D1119078018565EE76626A"
-                account    = Account.createFromPrivateKey(privateKey, networkType)
+                privateKey        <- HanamuraService.getPrivateKey(accountAddress)
+                account = Account.createFromPrivateKey(privateKey, networkType)
                 mosaicDefinitionTransaction = SymbolNem.buildMosaicDefinitionTransaction(
                   account,
                   blockDuration,
@@ -147,13 +153,12 @@ package object symbolService {
               divisibility: Int,
               delta: Int,
               supplyChangeActionType: MosaicSupplyChangeActionType
-            ): ZIO[SymbolType, Throwable, HanamuraResponse] =
+            ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse] =
               for {
                 repositoryFactory <- repositoryFactoryRef.get
                 networkType       <- repositoryFactory.getNetworkType.toTask
-                // find the privateKey on DB with the address account
-                privateKey = "291D8F1111DE464C1DACF5CDFA722C104F458C7055D1119078018565EE76626A"
-                account    = Account.createFromPrivateKey(privateKey, networkType)
+                privateKey        <- HanamuraService.getPrivateKey(accountAddress)
+                account = Account.createFromPrivateKey(privateKey, networkType)
                 modifyMosaicSupplyTransaction = SymbolNem.modifyMosaicSupply(
                   mosaicId,
                   divisibility,
