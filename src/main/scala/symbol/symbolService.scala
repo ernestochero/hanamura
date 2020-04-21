@@ -42,6 +42,10 @@ package object symbolService {
         duration: BigInteger
       ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse]
 
+      def getNamespaceInfo(
+        namespaceName: String
+      ): ZIO[SymbolType, Throwable, models.NamespaceInformation]
+
     }
     def getGenerationHashFromBlockGenesis: ZIO[SymbolType, Throwable, String] =
       ZIO.accessM[SymbolType](_.get.getGenerationHashFromBlockGenesis)
@@ -96,6 +100,11 @@ package object symbolService {
           duration
         )
       )
+
+    def getNamespaceInfo(
+      namespaceName: String
+    ): ZIO[SymbolType, Throwable, models.NamespaceInformation] =
+      ZIO.accessM[SymbolType](_.get.getNamespaceInfo(namespaceName))
 
     def make(
       repositoryFactory: RepositoryFactory
@@ -232,6 +241,20 @@ package object symbolService {
                                                                       signedTransaction)
               } yield
                 HanamuraSuccessResponse(responseMessage = s"${announcedTransaction.getMessage}")
+
+            override def getNamespaceInfo(
+              namespaceName: String
+            ): ZIO[SymbolType, Throwable, models.NamespaceInformation] =
+              for {
+                repositoryFactory <- repositoryFactoryRef.get
+                namespaceRepository = repositoryFactory.createNamespaceRepository()
+                namespaceInfo <- SymbolNem.getNamespaceInfo(namespaceName, namespaceRepository)
+              } yield
+                models.NamespaceInformation(namespaceName,
+                                            namespaceInfo.getMetaId,
+                                            namespaceInfo.getStartHeight.toString,
+                                            namespaceInfo.getEndHeight.toString,
+                                            namespaceInfo.isExpired)
           }
       }
   }
