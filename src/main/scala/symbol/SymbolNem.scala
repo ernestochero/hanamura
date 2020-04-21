@@ -96,14 +96,23 @@ object SymbolNem {
                           signedTransaction: SignedTransaction): Task[TransactionAnnounceResponse] =
     transactionRepository.announce(signedTransaction).toFuture.toTask
 
-  def registerNamespace(namespaceName: String,
-                        namespaceRepository: NamespaceRepository): Task[NamespaceInfo] = {
+  def getNamespaceInfo(namespaceName: String,
+                       namespaceRepository: NamespaceRepository): Task[NamespaceInfo] = {
     val namespaceId = NamespaceId.createFromName(namespaceName)
     namespaceRepository
       .getNamespace(namespaceId)
       .toFuture
       .toTask
   }
+
+  def buildNamespaceRegistrationTransaction(
+    networkType: NetworkType,
+    namespaceName: String,
+    duration: BigInteger
+  ): NamespaceRegistrationTransaction =
+    NamespaceRegistrationTransactionFactory
+      .createRootNamespace(networkType, namespaceName, duration)
+      .build()
 
   def registerSubnamespace(subNamespaceName: String, parentId: NamespaceId, fee: BigInteger)(
     implicit networkType: NetworkType

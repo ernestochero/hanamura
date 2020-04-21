@@ -1,4 +1,6 @@
 package symbol
+import java.math.BigInteger
+
 import io.nem.symbol.sdk.api.RepositoryFactory
 import io.nem.symbol.sdk.model.account.{ Account, Address }
 import zio.{ Has, Queue, Ref, ZIO, ZLayer }
@@ -33,6 +35,13 @@ package object symbolService {
         delta: Int,
         supplyChangeActionType: MosaicSupplyChangeActionType
       ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse]
+
+      def registerNamespace(
+        accountAddress: Address,
+        namespaceName: String,
+        duration: BigInteger
+      ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse]
+
     }
     def getGenerationHashFromBlockGenesis: ZIO[SymbolType, Throwable, String] =
       ZIO.accessM[SymbolType](_.get.getGenerationHashFromBlockGenesis)
@@ -72,6 +81,19 @@ package object symbolService {
           divisibility,
           delta,
           supplyChangeActionType
+        )
+      )
+
+    def registerNamespace(
+      accountAddress: Address,
+      namespaceName: String,
+      duration: BigInteger
+    ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse] =
+      ZIO.accessM[SymbolType with HanamuraServiceType](
+        _.get.registerNamespace(
+          accountAddress,
+          namespaceName,
+          duration
         )
       )
 
@@ -174,6 +196,37 @@ package object symbolService {
                                                              networkType)
                 generationHash <- getGenerationHashFromBlockGenesis
                 signedTransaction     = SymbolNem.signTransaction(account, transaction, generationHash)
+                transactionRepository = repositoryFactory.createTransactionRepository()
+                announcedTransaction <- SymbolNem.announceTransaction(transactionRepository,
+                                                                      signedTransaction)
+              } yield
+                HanamuraSuccessResponse(responseMessage = s"${announcedTransaction.getMessage}")
+
+            override def registerNamespace(
+              accountAddress: Address,
+              namespaceName: String,
+              duration: BigInteger
+            ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse] =
+              for {
+                repositoryFactory <- repositoryFactoryRef.get
+                networkType       <- repositoryFactory.getNetworkType.toTask
+                privateKey        <- HanamuraService.getPrivateKey(accountAddress)
+                account = Account.createFromPrivateKey(privateKey, networkType)
+                namespaceRegistrationTransaction = SymbolNem.buildNamespaceRegistrationTransaction(
+                  networkType,
+                  namespaceName,
+                  duration
+                )
+                namespaceTransactions = List(
+                  namespaceRegistrationTransaction.toAggregate(account.getPublicAccount)
+                )
+                aggregateTransaction = SymbolNem.aggregateTransaction(namespaceTransactions,
+                                                                      mosaicFee,
+                                                                      networkType)
+                generationHash <- getGenerationHashFromBlockGenesis
+                signedTransaction = SymbolNem.signTransaction(account,
+                                                              aggregateTransaction,
+                                                              generationHash)
                 transactionRepository = repositoryFactory.createTransactionRepository()
                 announcedTransaction <- SymbolNem.announceTransaction(transactionRepository,
                                                                       signedTransaction)

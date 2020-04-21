@@ -1,4 +1,6 @@
 package graphql
+import java.math.BigInteger
+
 import scala.language.higherKinds
 import caliban.{ GraphQL, RootResolver }
 import caliban.schema.{ ArgBuilder, GenericSchema, Schema }
@@ -29,6 +31,11 @@ object HanamuraApi extends GenericSchema[HanamuraServiceType with SymbolType] {
         throw new Exception("Incorrect SupplyActionType to create MosaicSupplyChangeActionType")
     }
 
+  implicit val bigIntegerSchema: Schema[Any, BigInteger] =
+    Schema.longSchema.contramap[BigInteger](_.longValue())
+  implicit val bigIntegerArgBuilder: ArgBuilder[BigInteger] =
+    ArgBuilder.long.map(BigInteger.valueOf)
+
   implicit val mosaicIdSchema: Schema[Any, MosaicId] =
     Schema.stringSchema.contramap[MosaicId](_.getIdAsHex)
   implicit val mosaicIdArgBuilder: ArgBuilder[MosaicId] =
@@ -56,7 +63,10 @@ object HanamuraApi extends GenericSchema[HanamuraServiceType with SymbolType] {
           HanamuraService.getUsersFromDatabase,
           args => HanamuraService.getUserFromDatabase(args.id),
           SymbolService.getGenerationHashFromBlockGenesis,
-          args => SymbolService.getAccountInfo(args.address),
+          args => SymbolService.getAccountInfo(args.address)
+        ),
+        Mutations(
+          args => HanamuraService.addUser(args.name),
           args =>
             SymbolService.createMosaic(
               args.accountAddress,
@@ -74,10 +84,9 @@ object HanamuraApi extends GenericSchema[HanamuraServiceType with SymbolType] {
               args.divisibility,
               args.delta,
               args.supplyChangeActionType
-          )
-        ),
-        Mutations(
-          args => HanamuraService.addUser(args.name)
+          ),
+          args =>
+            SymbolService.registerNamespace(args.accountAddress, args.namespaceName, args.duration)
         ),
         Subscriptions(
           HanamuraService.userAddedEvent
