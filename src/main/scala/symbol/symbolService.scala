@@ -13,6 +13,7 @@ import commons.Constants._
 import graphql.HanamuraService.HanamuraServiceType
 import io.nem.symbol.sdk.model.mosaic.{ MosaicId, MosaicSupplyChangeActionType }
 import graphql._
+import io.nem.symbol.sdk.model.namespace.{ AliasAction, NamespaceId }
 package object symbolService {
   type SymbolType = Has[SymbolService.Service]
   object SymbolService {
@@ -45,6 +46,13 @@ package object symbolService {
       def getNamespaceInfo(
         namespaceName: String
       ): ZIO[SymbolType, Throwable, models.NamespaceInformation]
+
+      def linkNamespaceToMosaic(
+        accountAddress: Address,
+        namespaceName: String,
+        mosaicId: MosaicId,
+        aliasAction: AliasAction
+      ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse]
 
     }
     def getGenerationHashFromBlockGenesis: ZIO[SymbolType, Throwable, String] =
@@ -106,6 +114,16 @@ package object symbolService {
     ): ZIO[SymbolType, Throwable, models.NamespaceInformation] =
       ZIO.accessM[SymbolType](_.get.getNamespaceInfo(namespaceName))
 
+    def linkNamespaceToMosaic(
+      accountAddress: Address,
+      namespaceName: String,
+      mosaicId: MosaicId,
+      aliasAction: AliasAction
+    ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse] =
+      ZIO.accessM[SymbolType with HanamuraServiceType](
+        _.get.linkNamespaceToMosaic(accountAddress, namespaceName, mosaicId, aliasAction)
+      )
+
     def make(
       repositoryFactory: RepositoryFactory
     ) =
@@ -130,7 +148,7 @@ package object symbolService {
                 accountRepository = repositoryFactory.createAccountRepository()
                 accountInfo <- accountRepository.getAccountInfo(address).toTask
                 mosaics = accountInfo.getMosaics.asScala
-                  .map(m => models.Mosaic(m.getIdAsHex, m.getAmount.toString))
+                  .map(m => models.MosaicInformation(m.getIdAsHex, m.getAmount.toString))
                   .toList
               } yield models.AccountInformation(address.pretty(), mosaics)
 
@@ -255,6 +273,36 @@ package object symbolService {
                                             namespaceInfo.getStartHeight.toString,
                                             namespaceInfo.getEndHeight.toString,
                                             namespaceInfo.isExpired)
+
+            override def linkNamespaceToMosaic(
+              accountAddress: Address,
+              namespaceName: String,
+              mosaicId: MosaicId,
+              aliasAction: AliasAction
+            ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse] =
+              for {
+                repositoryFactory <- repositoryFactoryRef.get
+                networkType       <- repositoryFactory.getNetworkType.toTask
+                privateKey        <- HanamuraService.getPrivateKey(accountAddress)
+                account     = Account.createFromPrivateKey(privateKey, networkType)
+                namespaceId = new NamespaceId(namespaceName)
+                mosaicAliasTransaction = SymbolNem.buildMosaicAliasTransaction(networkType,
+                                                                               namespaceId,
+                                                                               mosaicId,
+                                                                               aliasAction)
+                aggregateTransaction = SymbolNem.aggregateTransaction(List(mosaicAliasTransaction),
+                                                                      mosaicFee,
+                                                                      networkType)
+                generationHash <- getGenerationHashFromBlockGenesis
+                signedTransaction = SymbolNem.signTransaction(account,
+                                                              aggregateTransaction,
+                                                              generationHash)
+                transactionRepository = repositoryFactory.createTransactionRepository()
+                announcedTransaction <- SymbolNem.announceTransaction(transactionRepository,
+                                                                      signedTransaction)
+
+              } yield
+                HanamuraSuccessResponse(responseMessage = s"${announcedTransaction.getMessage}")
           }
       }
   }

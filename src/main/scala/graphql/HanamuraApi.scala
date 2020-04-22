@@ -9,24 +9,43 @@ import graphql.HanamuraService.HanamuraServiceType
 import io.nem.symbol.sdk.model.account.Address
 import io.nem.symbol.sdk.model.blockchain.BlockDuration
 import io.nem.symbol.sdk.model.mosaic.{ MosaicId, MosaicSupplyChangeActionType }
+import io.nem.symbol.sdk.model.namespace.AliasAction
+import models._
 import org.mongodb.scala.bson.ObjectId
 import zio.clock.Clock
 import zio.console.Console
 import symbol.symbolService._
 object HanamuraApi extends GenericSchema[HanamuraServiceType with SymbolType] {
 
+  implicit val aliasActionSchema: Schema[Any, AliasAction] =
+    Schema
+      .gen[AliasActionType]
+      .contramap[AliasAction](_.getValue.toInt match {
+        case 1 => AliasActionType.LINK
+        case 0 => AliasActionType.UNLINK
+        case _ => throw new Exception("Incorrect number to create AliasActionType")
+      })
+
+  implicit val aliasActionSchemaArgBuilder: ArgBuilder[AliasAction] =
+    ArgBuilder.gen[AliasActionType].map {
+      case AliasActionType.LINK   => AliasAction.LINK
+      case AliasActionType.UNLINK => AliasAction.UNLINK
+      case _ =>
+        throw new Exception("Incorrect SupplyActionType to create AliasAction")
+    }
+
   implicit val supplyChangeActionTypeSchema: Schema[Any, MosaicSupplyChangeActionType] =
     Schema
-      .gen[models.SupplyActionType]
+      .gen[SupplyActionType]
       .contramap[MosaicSupplyChangeActionType](_.getValue match {
-        case 1 => models.SupplyActionType.INCREASE
-        case 0 => models.SupplyActionType.DECREASE
+        case 1 => SupplyActionType.INCREASE
+        case 0 => SupplyActionType.DECREASE
         case _ => throw new Exception("Incorrect number to create SupplyActionType")
       })
   implicit val supplyChangeActionTypeArgBuilder: ArgBuilder[MosaicSupplyChangeActionType] =
-    ArgBuilder.gen[models.SupplyActionType].map {
-      case models.SupplyActionType.INCREASE => MosaicSupplyChangeActionType.INCREASE
-      case models.SupplyActionType.DECREASE => MosaicSupplyChangeActionType.DECREASE
+    ArgBuilder.gen[SupplyActionType].map {
+      case SupplyActionType.INCREASE => MosaicSupplyChangeActionType.INCREASE
+      case SupplyActionType.DECREASE => MosaicSupplyChangeActionType.DECREASE
       case _ =>
         throw new Exception("Incorrect SupplyActionType to create MosaicSupplyChangeActionType")
     }
@@ -87,7 +106,12 @@ object HanamuraApi extends GenericSchema[HanamuraServiceType with SymbolType] {
               args.supplyChangeActionType
           ),
           args =>
-            SymbolService.registerNamespace(args.accountAddress, args.namespaceName, args.duration)
+            SymbolService.registerNamespace(args.accountAddress, args.namespaceName, args.duration),
+          args =>
+            SymbolService.linkNamespaceToMosaic(args.accountAddress,
+                                                args.namespaceName,
+                                                args.mosaicId,
+                                                args.aliasAction)
         ),
         Subscriptions(
           HanamuraService.userAddedEvent

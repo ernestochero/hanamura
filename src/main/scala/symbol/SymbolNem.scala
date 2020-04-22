@@ -8,11 +8,12 @@ import io.nem.symbol.sdk.model.account.{ Account, UnresolvedAddress }
 import io.nem.symbol.sdk.model.blockchain.{ BlockDuration, BlockInfo }
 import io.nem.symbol.sdk.model.message.{ Message, PlainMessage }
 import io.nem.symbol.sdk.model.mosaic._
-import io.nem.symbol.sdk.model.namespace.{ NamespaceId, NamespaceInfo }
+import io.nem.symbol.sdk.model.namespace.{ AliasAction, NamespaceId, NamespaceInfo }
 import io.nem.symbol.sdk.model.network.NetworkType
 import io.nem.symbol.sdk.model.transaction._
 import zio.{ Task, ZIO }
 import commons.Transformers._
+
 import scala.collection.JavaConverters._
 
 object SymbolNem {
@@ -113,6 +114,12 @@ object SymbolNem {
     NamespaceRegistrationTransactionFactory
       .createRootNamespace(networkType, namespaceName, duration)
       .build()
+
+  def buildMosaicAliasTransaction(networkType: NetworkType,
+                                  namespaceId: NamespaceId,
+                                  mosaicId: MosaicId,
+                                  aliasAction: AliasAction): MosaicAliasTransaction =
+    MosaicAliasTransactionFactory.create(networkType, aliasAction, namespaceId, mosaicId).build()
 
   def registerSubnamespace(subNamespaceName: String, parentId: NamespaceId, fee: BigInteger)(
     implicit networkType: NetworkType

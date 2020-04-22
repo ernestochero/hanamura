@@ -24,4 +24,10 @@ object Transformers {
       }
   }
 
+  implicit final class OptionalJavaConverter[V](val self: java.util.Optional[V]) {
+    def toOption: Option[V] =
+      if (self.isPresent) Some(self.get())
+      else None
+  }
+
 }
