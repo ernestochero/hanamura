@@ -8,7 +8,7 @@ import io.nem.symbol.sdk.model.account.{ Account, UnresolvedAddress }
 import io.nem.symbol.sdk.model.blockchain.{ BlockDuration, BlockInfo }
 import io.nem.symbol.sdk.model.message.{ Message, PlainMessage }
 import io.nem.symbol.sdk.model.mosaic._
-import io.nem.symbol.sdk.model.namespace.{ AliasAction, NamespaceId, NamespaceInfo }
+import io.nem.symbol.sdk.model.namespace.{ AliasAction, NamespaceId, NamespaceInfo, NamespaceName }
 import io.nem.symbol.sdk.model.network.NetworkType
 import io.nem.symbol.sdk.model.transaction._
 import zio.{ Task, ZIO }
@@ -97,14 +97,22 @@ object SymbolNem {
                           signedTransaction: SignedTransaction): Task[TransactionAnnounceResponse] =
     transactionRepository.announce(signedTransaction).toFuture.toTask
 
-  def getNamespaceInfo(namespaceName: String,
-                       namespaceRepository: NamespaceRepository): Task[NamespaceInfo] = {
-    val namespaceId = NamespaceId.createFromName(namespaceName)
+  def getNamespaceInfo(namespaceId: NamespaceId,
+                       namespaceRepository: NamespaceRepository): Task[NamespaceInfo] =
     namespaceRepository
       .getNamespace(namespaceId)
       .toFuture
       .toTask
-  }
+
+  def getNamespaceNameFromMosaicId(
+    mosaicId: MosaicId,
+    namespaceRepository: NamespaceRepository
+  ): ZIO[Any, Throwable, Option[NamespaceName]] =
+    for {
+      mosaicNames <- namespaceRepository.getMosaicsNames(List(mosaicId).asJava).toTask
+      namespaceName = mosaicNames.asScala.headOption
+        .flatMap(_.getNames.asScala.headOption)
+    } yield namespaceName
 
   def buildNamespaceRegistrationTransaction(
     networkType: NetworkType,

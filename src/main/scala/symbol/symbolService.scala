@@ -11,9 +11,10 @@ import models.HanamuraMessages.{ HanamuraResponse, HanamuraSuccessResponse }
 import scala.collection.JavaConverters._
 import commons.Constants._
 import graphql.HanamuraService.HanamuraServiceType
-import io.nem.symbol.sdk.model.mosaic.{ MosaicId, MosaicSupplyChangeActionType }
+import io.nem.symbol.sdk.model.mosaic.{ MosaicId, MosaicInfo, MosaicSupplyChangeActionType }
 import graphql._
 import io.nem.symbol.sdk.model.namespace.{ AliasAction, NamespaceId }
+import models.MosaicInformation
 package object symbolService {
   type SymbolType = Has[SymbolService.Service]
   object SymbolService {
@@ -53,6 +54,10 @@ package object symbolService {
         mosaicId: MosaicId,
         aliasAction: AliasAction
       ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse]
+
+      def getMosaicInfo(
+        mosaicId: MosaicId
+      ): ZIO[SymbolType, Throwable, MosaicInformation]
 
     }
     def getGenerationHashFromBlockGenesis: ZIO[SymbolType, Throwable, String] =
@@ -123,6 +128,11 @@ package object symbolService {
       ZIO.accessM[SymbolType with HanamuraServiceType](
         _.get.linkNamespaceToMosaic(accountAddress, namespaceName, mosaicId, aliasAction)
       )
+
+    def getMosaicInfo(
+      mosaicId: MosaicId
+    ): ZIO[SymbolType, Throwable, MosaicInformation] =
+      ZIO.accessM[SymbolType](_.get.getMosaicInfo(mosaicId))
 
     def make(
       repositoryFactory: RepositoryFactory
@@ -266,7 +276,8 @@ package object symbolService {
               for {
                 repositoryFactory <- repositoryFactoryRef.get
                 namespaceRepository = repositoryFactory.createNamespaceRepository()
-                namespaceInfo <- SymbolNem.getNamespaceInfo(namespaceName, namespaceRepository)
+                namespaceId         = NamespaceId.createFromName(namespaceName)
+                namespaceInfo <- SymbolNem.getNamespaceInfo(namespaceId, namespaceRepository)
               } yield
                 models.NamespaceInformation(namespaceName,
                                             namespaceInfo.getMetaId,
@@ -285,12 +296,15 @@ package object symbolService {
                 networkType       <- repositoryFactory.getNetworkType.toTask
                 privateKey        <- HanamuraService.getPrivateKey(accountAddress)
                 account     = Account.createFromPrivateKey(privateKey, networkType)
-                namespaceId = new NamespaceId(namespaceName)
+                namespaceId = NamespaceId.createFromName(namespaceName)
                 mosaicAliasTransaction = SymbolNem.buildMosaicAliasTransaction(networkType,
                                                                                namespaceId,
                                                                                mosaicId,
                                                                                aliasAction)
-                aggregateTransaction = SymbolNem.aggregateTransaction(List(mosaicAliasTransaction),
+                transactions = List(
+                  mosaicAliasTransaction.toAggregate(account.getPublicAccount)
+                )
+                aggregateTransaction = SymbolNem.aggregateTransaction(transactions,
                                                                       mosaicFee,
                                                                       networkType)
                 generationHash <- getGenerationHashFromBlockGenesis
@@ -303,6 +317,21 @@ package object symbolService {
 
               } yield
                 HanamuraSuccessResponse(responseMessage = s"${announcedTransaction.getMessage}")
+
+            override def getMosaicInfo(
+              mosaicId: MosaicId
+            ): ZIO[SymbolType, Throwable, MosaicInformation] =
+              for {
+                repositoryFactory <- repositoryFactoryRef.get
+                mosaicRepository    = repositoryFactory.createMosaicRepository()
+                namespaceRepository = repositoryFactory.createNamespaceRepository()
+                namespaceName <- SymbolNem.getNamespaceNameFromMosaicId(mosaicId,
+                                                                        namespaceRepository)
+                mosaicInfo <- mosaicRepository.getMosaic(mosaicId).toTask
+              } yield
+                MosaicInformation(mosaicInfo.getMosaicId.getIdAsHex,
+                                  mosaicInfo.getSupply.toString,
+                                  namespaceName.map(_.getName))
           }
       }
   }

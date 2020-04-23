@@ -1,6 +1,8 @@
 package models
 
-final case class MosaicInformation(mosaicId: String, amount: String)
+final case class MosaicInformation(mosaicId: String,
+                                   amount: String,
+                                   nameSpaceName: Option[String] = None)
 final case class AccountInformation(address: String, mosaics: List[MosaicInformation])
 final case class NamespaceInformation(namespaceName: String,
                                       hexadecimal: String,
