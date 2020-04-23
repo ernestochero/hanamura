@@ -4,11 +4,18 @@ import java.math.{ BigDecimal, BigInteger }
 
 import io.nem.symbol.sdk.api.{ BlockRepository, NamespaceRepository, TransactionRepository }
 import io.nem.symbol.sdk.infrastructure.vertx.RepositoryFactoryVertxImpl
-import io.nem.symbol.sdk.model.account.{ Account, UnresolvedAddress }
+import io.nem.symbol.sdk.model.account.{ Account, Address, UnresolvedAddress }
 import io.nem.symbol.sdk.model.blockchain.{ BlockDuration, BlockInfo }
 import io.nem.symbol.sdk.model.message.{ Message, PlainMessage }
 import io.nem.symbol.sdk.model.mosaic._
-import io.nem.symbol.sdk.model.namespace.{ AliasAction, NamespaceId, NamespaceInfo, NamespaceName }
+import io.nem.symbol.sdk.model.namespace.{
+  Alias,
+  AliasAction,
+  AliasType,
+  NamespaceId,
+  NamespaceInfo,
+  NamespaceName
+}
 import io.nem.symbol.sdk.model.network.NetworkType
 import io.nem.symbol.sdk.model.transaction._
 import zio.{ Task, ZIO }
@@ -113,6 +120,25 @@ object SymbolNem {
       namespaceName = mosaicNames.asScala.headOption
         .flatMap(_.getNames.asScala.headOption)
     } yield namespaceName
+
+  def getAliasTypeFromNamespace(alias: Alias[_]): (String, String) =
+    alias.getType match {
+      case AliasType.ADDRESS => ("address", alias.getAliasValue.asInstanceOf[Address].pretty())
+      case AliasType.MOSAIC  => ("mosaic", alias.getAliasValue.asInstanceOf[MosaicId].getIdAsHex)
+      case AliasType.NONE    => ("none", "-")
+    }
+
+  def getNamespaceNameFromAccount(
+    address: Address,
+    namespaceRepository: NamespaceRepository
+  ): Task[List[String]] =
+    for {
+      accountNames <- namespaceRepository.getAccountsNames(List(address).asJava).toTask
+      namespaceNames = accountNames.asScala
+        .filter(_.getAddress == address)
+        .flatMap(_.getNames.asScala.map(_.getName))
+        .toList
+    } yield namespaceNames
 
   def buildNamespaceRegistrationTransaction(
     networkType: NetworkType,

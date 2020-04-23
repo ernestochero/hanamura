@@ -84,7 +84,7 @@ object HanamuraApi extends GenericSchema[HanamuraServiceType with SymbolType] {
           SymbolService.getGenerationHashFromBlockGenesis,
           args => SymbolService.getAccountInfo(args.address),
           args => SymbolService.getNamespaceInfo(args.namespaceName),
-          args => SymbolService.getMosaicInfo(args.mosaicId)
+          args => SymbolService.getMosaicInfo(args.address, args.mosaicId)
         ),
         Mutations(
           args => HanamuraService.addUser(args.name),

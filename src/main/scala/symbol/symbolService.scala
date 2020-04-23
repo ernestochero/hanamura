@@ -6,21 +6,22 @@ import io.nem.symbol.sdk.model.account.{ Account, Address }
 import zio.{ Has, Queue, Ref, ZIO, ZLayer }
 import commons.Transformers._
 import io.nem.symbol.sdk.model.blockchain.BlockDuration
-import models.HanamuraMessages.{ HanamuraResponse, HanamuraSuccessResponse }
+import models._
 
 import scala.collection.JavaConverters._
 import commons.Constants._
 import graphql.HanamuraService.HanamuraServiceType
 import io.nem.symbol.sdk.model.mosaic.{ MosaicId, MosaicInfo, MosaicSupplyChangeActionType }
 import graphql._
-import io.nem.symbol.sdk.model.namespace.{ AliasAction, NamespaceId }
-import models.MosaicInformation
+import io.nem.symbol.sdk.model.namespace.{ AliasAction, AliasType, NamespaceId }
+import models.HanamuraMessages.{ HanamuraResponse, HanamuraSuccessResponse }
+
 package object symbolService {
   type SymbolType = Has[SymbolService.Service]
   object SymbolService {
     trait Service {
       def getGenerationHashFromBlockGenesis: ZIO[SymbolType, Throwable, String]
-      def getAccountInfo(address: Address): ZIO[SymbolType, Throwable, models.AccountInformation]
+      def getAccountInfo(address: Address): ZIO[SymbolType, Throwable, AccountInformation]
       def createMosaic(
         accountAddress: Address,
         blockDuration: BlockDuration,
@@ -46,7 +47,7 @@ package object symbolService {
 
       def getNamespaceInfo(
         namespaceName: String
-      ): ZIO[SymbolType, Throwable, models.NamespaceInformation]
+      ): ZIO[SymbolType, Throwable, NamespaceInformation]
 
       def linkNamespaceToMosaic(
         accountAddress: Address,
@@ -56,13 +57,14 @@ package object symbolService {
       ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse]
 
       def getMosaicInfo(
+        address: Address,
         mosaicId: MosaicId
       ): ZIO[SymbolType, Throwable, MosaicInformation]
 
     }
     def getGenerationHashFromBlockGenesis: ZIO[SymbolType, Throwable, String] =
       ZIO.accessM[SymbolType](_.get.getGenerationHashFromBlockGenesis)
-    def getAccountInfo(address: Address): ZIO[SymbolType, Throwable, models.AccountInformation] =
+    def getAccountInfo(address: Address): ZIO[SymbolType, Throwable, AccountInformation] =
       ZIO.accessM[SymbolType](_.get.getAccountInfo(address))
     def createMosaic(
       accountAddress: Address,
@@ -116,7 +118,7 @@ package object symbolService {
 
     def getNamespaceInfo(
       namespaceName: String
-    ): ZIO[SymbolType, Throwable, models.NamespaceInformation] =
+    ): ZIO[SymbolType, Throwable, NamespaceInformation] =
       ZIO.accessM[SymbolType](_.get.getNamespaceInfo(namespaceName))
 
     def linkNamespaceToMosaic(
@@ -130,9 +132,10 @@ package object symbolService {
       )
 
     def getMosaicInfo(
+      address: Address,
       mosaicId: MosaicId
     ): ZIO[SymbolType, Throwable, MosaicInformation] =
-      ZIO.accessM[SymbolType](_.get.getMosaicInfo(mosaicId))
+      ZIO.accessM[SymbolType](_.get.getMosaicInfo(address, mosaicId))
 
     def make(
       repositoryFactory: RepositoryFactory
@@ -152,15 +155,19 @@ package object symbolService {
 
             override def getAccountInfo(
               address: Address
-            ): ZIO[SymbolType, Throwable, models.AccountInformation] =
+            ): ZIO[SymbolType, Throwable, AccountInformation] =
               for {
                 repositoryFactory <- repositoryFactoryRef.get
-                accountRepository = repositoryFactory.createAccountRepository()
+                accountRepository   = repositoryFactory.createAccountRepository()
+                namespaceRepository = repositoryFactory.createNamespaceRepository()
                 accountInfo <- accountRepository.getAccountInfo(address).toTask
-                mosaics = accountInfo.getMosaics.asScala
-                  .map(m => models.MosaicInformation(m.getIdAsHex, m.getAmount.toString))
-                  .toList
-              } yield models.AccountInformation(address.pretty(), mosaics)
+                importance = accountInfo.getImportances.asScala.map(_.getValue).toList
+                aliases <- SymbolNem.getNamespaceNameFromAccount(address, namespaceRepository)
+              } yield
+                AccountInformation(accountInfo.getAddress.pretty(),
+                                   importance,
+                                   accountInfo.getPublicKey,
+                                   aliases)
 
             override def createMosaic(
               accountAddress: Address,
@@ -272,21 +279,26 @@ package object symbolService {
 
             override def getNamespaceInfo(
               namespaceName: String
-            ): ZIO[SymbolType, Throwable, models.NamespaceInformation] =
+            ): ZIO[SymbolType, Throwable, NamespaceInformation] =
               for {
                 repositoryFactory <- repositoryFactoryRef.get
                 namespaceRepository = repositoryFactory.createNamespaceRepository()
                 namespaceId         = NamespaceId.createFromName(namespaceName)
                 namespaceInfo <- SymbolNem.getNamespaceInfo(namespaceId, namespaceRepository)
+                (aliasType, alias) = SymbolNem.getAliasTypeFromNamespace(namespaceInfo.getAlias)
               } yield
-                models.NamespaceInformation(namespaceName,
-                                            namespaceInfo.getMetaId,
-                                            namespaceInfo.getStartHeight.toString,
-                                            namespaceInfo.getEndHeight.toString,
-                                            namespaceInfo.isExpired)
+                NamespaceInformation(
+                  namespaceName,
+                  namespaceInfo.getMetaId,
+                  namespaceInfo.getStartHeight.toString,
+                  namespaceInfo.getEndHeight.toString,
+                  namespaceInfo.isExpired,
+                  aliasType,
+                  alias
+                )
 
             override def linkNamespaceToMosaic(
-              accountAddress: Address,
+              address: Address,
               namespaceName: String,
               mosaicId: MosaicId,
               aliasAction: AliasAction
@@ -294,7 +306,7 @@ package object symbolService {
               for {
                 repositoryFactory <- repositoryFactoryRef.get
                 networkType       <- repositoryFactory.getNetworkType.toTask
-                privateKey        <- HanamuraService.getPrivateKey(accountAddress)
+                privateKey        <- HanamuraService.getPrivateKey(address)
                 account     = Account.createFromPrivateKey(privateKey, networkType)
                 namespaceId = NamespaceId.createFromName(namespaceName)
                 mosaicAliasTransaction = SymbolNem.buildMosaicAliasTransaction(networkType,
@@ -319,19 +331,31 @@ package object symbolService {
                 HanamuraSuccessResponse(responseMessage = s"${announcedTransaction.getMessage}")
 
             override def getMosaicInfo(
+              address: Address,
               mosaicId: MosaicId
             ): ZIO[SymbolType, Throwable, MosaicInformation] =
               for {
                 repositoryFactory <- repositoryFactoryRef.get
+                accountRepository   = repositoryFactory.createAccountRepository()
                 mosaicRepository    = repositoryFactory.createMosaicRepository()
                 namespaceRepository = repositoryFactory.createNamespaceRepository()
                 namespaceName <- SymbolNem.getNamespaceNameFromMosaicId(mosaicId,
                                                                         namespaceRepository)
                 mosaicInfo <- mosaicRepository.getMosaic(mosaicId).toTask
+                account    <- accountRepository.getAccountInfo(address).toTask
+                mosaic = account.getMosaics.asScala
+                  .find(_.getIdAsHex == mosaicId.getIdAsHex)
               } yield
-                MosaicInformation(mosaicInfo.getMosaicId.getIdAsHex,
-                                  mosaicInfo.getSupply.toString,
-                                  namespaceName.map(_.getName))
+                MosaicInformation(
+                  mosaicInfo.getMosaicId.getIdAsHex,
+                  namespaceName.map(_.getName),
+                  mosaicInfo.getSupply.toString,
+                  mosaic.map(_.getAmount),
+                  mosaicInfo.getDivisibility,
+                  mosaicInfo.isTransferable,
+                  mosaicInfo.isSupplyMutable,
+                  mosaicInfo.isTransferable
+                )
           }
       }
   }

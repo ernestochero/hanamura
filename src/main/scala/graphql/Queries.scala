@@ -10,7 +10,7 @@ import symbol.symbolService._
 case class idArg(id: String)
 case class getNamespaceInfoArg(namespaceName: String)
 case class addressArg(address: Address)
-case class getMosaicInfoArg(mosaicId: MosaicId)
+case class getMosaicInfoArg(address: Address, mosaicId: MosaicId)
 case class Queries(
   @GQLDescription("Hanamura say hello to you")
   sayHello: ZIO[HanamuraServiceType, Nothing, String],
