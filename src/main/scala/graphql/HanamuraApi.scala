@@ -79,15 +79,12 @@ object HanamuraApi extends GenericSchema[HanamuraServiceType with SymbolType] {
       RootResolver(
         Queries(
           HanamuraService.sayHello,
-          HanamuraService.getUsersFromDatabase,
-          args => HanamuraService.getUserFromDatabase(args.id),
           SymbolService.getGenerationHashFromBlockGenesis,
           args => SymbolService.getAccountInfo(args.address),
           args => SymbolService.getNamespaceInfo(args.namespaceName),
           args => SymbolService.getMosaicInfo(args.address, args.mosaicId)
         ),
         Mutations(
-          args => HanamuraService.addUser(args.name),
           args =>
             SymbolService.createMosaic(
               args.accountAddress,

@@ -43,7 +43,6 @@ case class linkNamespaceToMosaicArg(
 )
 
 case class Mutations(
-  addUser: nameArg => ZIO[HanamuraServiceType, Throwable, User],
   @GQLDescription("Symbol: create mosaic")
   createMosaic: createMosaicArg => ZIO[SymbolType with HanamuraServiceType,
                                        Throwable,
