@@ -189,11 +189,15 @@ package object symbolService {
                 accountInfo <- accountRepository.getAccountInfo(address).toTask
                 importance = accountInfo.getImportances.asScala.map(_.getValue).toList
                 aliases <- SymbolNem.getNamespaceNameFromAccount(address, namespaceRepository)
+                mosaics = accountInfo.getMosaics.asScala
+                  .map(m => MosaicInformationFromAddress(m.getIdAsHex, m.getAmount))
+                  .toList
               } yield
                 AccountInformation(accountInfo.getAddress.pretty(),
                                    importance,
                                    accountInfo.getPublicKey,
-                                   aliases)
+                                   aliases,
+                                   mosaics)
 
             override def createMosaic(
               accountAddress: Address,

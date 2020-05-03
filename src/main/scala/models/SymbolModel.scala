@@ -10,10 +10,13 @@ final case class MosaicInformation(mosaicId: String,
                                    mutable: Boolean,
                                    restrictable: Boolean)
 
-final case class AccountInformation(address: String,
-                                    importances: List[BigInteger],
-                                    publicKey: String,
-                                    aliases: List[String])
+final case class AccountInformation(
+  address: String,
+  importances: List[BigInteger],
+  publicKey: String,
+  aliases: List[String],
+  mosaics: List[MosaicInformationFromAddress]
+)
 
 final case class NamespaceInformation(namespaceName: String,
                                       hexadecimal: String,
@@ -22,6 +25,10 @@ final case class NamespaceInformation(namespaceName: String,
                                       expired: Boolean,
                                       aliasType: String,
                                       alias: String)
+final case class MosaicInformationFromAddress(
+  IdAsHex: String,
+  amount: BigInteger
+)
 sealed trait AliasActionType
 object AliasActionType {
   case object LINK   extends AliasActionType
