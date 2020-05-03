@@ -22,6 +22,8 @@ libraryDependencies ++= Seq(
   "com.github.ghostdogpr" %% "caliban-http4s" % calibanVersion,
   "io.circe"      %% "circe-derivation"    % "0.12.0-M7",
   "com.github.pureconfig" %% "pureconfig" % "0.12.1",
+  "org.log4s" %% "log4s" % "1.8.2",
+  "ch.qos.logback" % "logback-classic" % "1.2.3",
   compilerPlugin(("org.typelevel" %% "kind-projector" % "0.11.0").cross(CrossVersion.full))
 )
 

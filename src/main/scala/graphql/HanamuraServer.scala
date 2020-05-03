@@ -17,6 +17,7 @@ import zio.blocking.Blocking
 import cats.effect.Blocker
 import zio._
 import symbol.SymbolNem
+import commons.Logger.logger
 object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
   type HanamuraTask[A] = RIO[ZEnv, A]
   val symbolHost                                                    = "http://localhost:3000"
@@ -28,6 +29,7 @@ object HanamuraServer extends CatsApp with GenericSchema[Console with Clock] {
       conf.mongoConf.database,
       conf.mongoConf.userCollection
     )
+    _ = logger.info(s" > Initializing program ${conf.appName} ")
     repositoryFactory <- SymbolNem.buildRepositoryFactory(symbolHost)
     symbolLayer = SymbolService.make(repositoryFactory)
     _ <- HanamuraService
