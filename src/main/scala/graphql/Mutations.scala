@@ -13,8 +13,8 @@ import models.User
 import symbol.symbolService.SymbolType
 import zio.ZIO
 
-case class nameArg(name: String)
-case class createMosaicArg(
+case class NameArg(name: String)
+case class CreateMosaicArg(
   accountAddress: Address,
   blockDuration: BlockDuration,
   isSupplyMutable: Boolean,
@@ -23,7 +23,7 @@ case class createMosaicArg(
   divisibility: Int,
   delta: Int
 )
-case class modifyMosaicSupplyArg(
+case class ModifyMosaicSupplyArg(
   accountAddress: Address,
   mosaicId: MosaicId,
   divisibility: Int,
@@ -31,32 +31,46 @@ case class modifyMosaicSupplyArg(
   supplyChangeActionType: MosaicSupplyChangeActionType
 )
 
-case class registerNamespaceArg(accountAddress: Address,
+case class RegisterNamespaceArg(accountAddress: Address,
                                 namespaceName: String,
                                 duration: BigInteger)
 
-case class linkNamespaceToMosaicArg(
+case class LinkNamespaceToMosaicArg(
   accountAddress: Address,
   namespaceName: String,
   mosaicId: MosaicId,
   aliasAction: AliasAction
 )
 
+case class SendMosaicArg(
+  from: Address,
+  to: Address,
+  mosaicId: MosaicId,
+  amount: BigInteger,
+  message: String
+)
+
 case class Mutations(
-  @GQLDescription("Symbol: create mosaic")
-  createMosaic: createMosaicArg => ZIO[SymbolType with HanamuraServiceType,
+  @GQLDescription("Symbol: creates mosaic")
+  createMosaic: CreateMosaicArg => ZIO[SymbolType with HanamuraServiceType,
                                        Throwable,
                                        HanamuraResponse],
-  @GQLDescription("Symbol: modify the supply amount of a mosaic")
-  modifyMosaicSupply: modifyMosaicSupplyArg => ZIO[SymbolType with HanamuraServiceType,
+  @GQLDescription("Symbol: modifies the supply amount of a mosaic")
+  modifyMosaicSupply: ModifyMosaicSupplyArg => ZIO[SymbolType with HanamuraServiceType,
                                                    Throwable,
                                                    HanamuraResponse],
-  @GQLDescription("Symbol: register a namespace")
-  registerNamespace: registerNamespaceArg => ZIO[SymbolType with HanamuraServiceType,
+  @GQLDescription("Symbol: registers a namespace")
+  registerNamespace: RegisterNamespaceArg => ZIO[SymbolType with HanamuraServiceType,
                                                  Throwable,
                                                  HanamuraResponse],
-  @GQLDescription("Symbol: link namespace to a mosaic")
-  linkNamespaceToMosaic: linkNamespaceToMosaicArg => ZIO[SymbolType with HanamuraServiceType,
+  @GQLDescription("Symbol: links namespace to a mosaic")
+  linkNamespaceToMosaic: LinkNamespaceToMosaicArg => ZIO[SymbolType with HanamuraServiceType,
                                                          Throwable,
-                                                         HanamuraResponse]
+                                                         HanamuraResponse],
+  @GQLDescription("Symbol: sends an amount of mosaic from Address to Another")
+  sendMosaic: SendMosaicArg => ZIO[
+    SymbolType with HanamuraServiceType,
+    Throwable,
+    HanamuraResponse
+  ]
 )

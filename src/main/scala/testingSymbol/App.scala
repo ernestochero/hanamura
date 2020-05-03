@@ -22,21 +22,22 @@ object Factory {
 
 object AccountToTest {
   import Factory._
-  // pretty Address : TBKIKY-O7VEPG-7I2XRJ-QG3VIV-B2JOVK-VBAEXZ-W2AB
-  val harvestNemesisAccount: Task[AccountInfo] = accountRepository
+  // pretty Address : TAB32R-QVKKYU-5HH52N-7ZIUDT-5X2OS2-KYXLBQ-NQRK
+  // privateKey : 0186348C54DCFA1873218997F79BCBDC3D9684514CB1DD5E8103C45CE78F25D3
+  val otherAccountToTest: Task[AccountInfo] = accountRepository
     .getAccountInfo(
       Address
-        .createFromPublicKey("B67370949581A3F6D97A4533665006F5ED05F60D164075EB8614A6DF9D6C39CB",
+        .createFromPublicKey("37D2D793FFECDF868A7AD7FD0EBCA39702FB4355200B7F8078A7455ABA60CF48",
                              NetworkType.TEST_NET)
     )
     .toTask
 
-  // pretty Address : TBT2F7-F5U3FL-L7K6S3-LBZIGK-J2HM2X-UOT7F7-QIM4
-  // privateKey : 291D8F1111DE464C1DACF5CDFA722C104F458C7055D1119078018565EE76626A
+  // pretty Address : TBKXHX-2DZDBE-KYFU3D-V4X2HT-5G4QLX-KKVUYN-EITK
+  // privateKey : 1D0F91CA18292A324AA8E50A37383C73BDEE7866F6A1F465FA82841CB82C7A2E
   val myAccountToTest: Task[AccountInfo] = accountRepository
     .getAccountInfo(
       Address
-        .createFromPublicKey("2948F1862C6BD7A40D0C83B62FEF4278D9FEEDD25BF738AFCE246D532FA8775D",
+        .createFromPublicKey("2628FC775E0D2C3C484EB9663FB0E6BABEB7F41154F46745DB78D6F189F99758",
                              NetworkType.TEST_NET)
     )
     .toTask
@@ -120,6 +121,13 @@ object App {
     println(runtime.unsafeRun(myAccountToTest).getAddress.pretty())
     runtime
       .unsafeRun(myAccountToTest)
+      .getMosaics
+      .asScala
+      .foreach(m => println(s"${m.getAmount} -> ${m.getIdAsHex}"))
+
+    println(runtime.unsafeRun(otherAccountToTest).getAddress.pretty())
+    runtime
+      .unsafeRun(otherAccountToTest)
       .getMosaics
       .asScala
       .foreach(m => println(s"${m.getAmount} -> ${m.getIdAsHex}"))

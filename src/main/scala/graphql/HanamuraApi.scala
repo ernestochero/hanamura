@@ -104,12 +104,26 @@ object HanamuraApi extends GenericSchema[HanamuraServiceType with SymbolType] {
               args.supplyChangeActionType
           ),
           args =>
-            SymbolService.registerNamespace(args.accountAddress, args.namespaceName, args.duration),
+            SymbolService.registerNamespace(
+              args.accountAddress,
+              args.namespaceName,
+              args.duration
+          ),
           args =>
-            SymbolService.linkNamespaceToMosaic(args.accountAddress,
-                                                args.namespaceName,
-                                                args.mosaicId,
-                                                args.aliasAction)
+            SymbolService.linkNamespaceToMosaic(
+              args.accountAddress,
+              args.namespaceName,
+              args.mosaicId,
+              args.aliasAction
+          ),
+          args =>
+            SymbolService.sendMosaic(
+              args.from,
+              args.to,
+              args.mosaicId,
+              args.amount,
+              args.message
+          )
         ),
         Subscriptions(
           HanamuraService.userAddedEvent

@@ -11,8 +11,9 @@ import models._
 import scala.collection.JavaConverters._
 import commons.Constants._
 import graphql.HanamuraService.HanamuraServiceType
-import io.nem.symbol.sdk.model.mosaic.{ MosaicId, MosaicInfo, MosaicSupplyChangeActionType }
+import io.nem.symbol.sdk.model.mosaic.{ Mosaic, MosaicId, MosaicInfo, MosaicSupplyChangeActionType }
 import graphql._
+import io.nem.symbol.sdk.model.message.PlainMessage
 import io.nem.symbol.sdk.model.namespace.{ AliasAction, AliasType, NamespaceId }
 import models.HanamuraMessages.{ HanamuraResponse, HanamuraSuccessResponse }
 
@@ -60,6 +61,14 @@ package object symbolService {
         address: Address,
         mosaicId: MosaicId
       ): ZIO[SymbolType, Throwable, MosaicInformation]
+
+      def sendMosaic(
+        from: Address,
+        recipientAddress: Address,
+        mosaicId: MosaicId,
+        amount: BigInteger,
+        message: String
+      ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse]
 
     }
     def getGenerationHashFromBlockGenesis: ZIO[SymbolType, Throwable, String] =
@@ -137,6 +146,23 @@ package object symbolService {
     ): ZIO[SymbolType, Throwable, MosaicInformation] =
       ZIO.accessM[SymbolType](_.get.getMosaicInfo(address, mosaicId))
 
+    def sendMosaic(
+      from: Address,
+      recipientAddress: Address,
+      mosaicId: MosaicId,
+      amount: BigInteger,
+      message: String
+    ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse] =
+      ZIO.accessM[SymbolType with HanamuraServiceType](
+        _.get.sendMosaic(
+          from,
+          recipientAddress,
+          mosaicId,
+          amount,
+          message
+        )
+      )
+
     def make(
       repositoryFactory: RepositoryFactory
     ) =
@@ -204,7 +230,7 @@ package object symbolService {
                 )
                 generationHash <- getGenerationHashFromBlockGenesis
                 transaction = SymbolNem.aggregateTransaction(mosaicTransactions,
-                                                             mosaicFee,
+                                                             defaultFee,
                                                              networkType)
                 signedTransaction     = SymbolNem.signTransaction(account, transaction, generationHash)
                 transactionRepository = repositoryFactory.createTransactionRepository()
@@ -236,7 +262,7 @@ package object symbolService {
                   modifyMosaicSupplyTransaction.toAggregate(account.getPublicAccount),
                 )
                 transaction = SymbolNem.aggregateTransaction(mosaicTransactions,
-                                                             mosaicFee,
+                                                             defaultFee,
                                                              networkType)
                 generationHash <- getGenerationHashFromBlockGenesis
                 signedTransaction     = SymbolNem.signTransaction(account, transaction, generationHash)
@@ -265,7 +291,7 @@ package object symbolService {
                   namespaceRegistrationTransaction.toAggregate(account.getPublicAccount)
                 )
                 aggregateTransaction = SymbolNem.aggregateTransaction(namespaceTransactions,
-                                                                      mosaicFee,
+                                                                      defaultFee,
                                                                       networkType)
                 generationHash <- getGenerationHashFromBlockGenesis
                 signedTransaction = SymbolNem.signTransaction(account,
@@ -317,7 +343,7 @@ package object symbolService {
                   mosaicAliasTransaction.toAggregate(account.getPublicAccount)
                 )
                 aggregateTransaction = SymbolNem.aggregateTransaction(transactions,
-                                                                      mosaicFee,
+                                                                      defaultFee,
                                                                       networkType)
                 generationHash <- getGenerationHashFromBlockGenesis
                 signedTransaction = SymbolNem.signTransaction(account,
@@ -355,6 +381,52 @@ package object symbolService {
                   mosaicInfo.isTransferable,
                   mosaicInfo.isSupplyMutable,
                   mosaicInfo.isTransferable
+                )
+
+            override def sendMosaic(
+              from: Address,
+              recipientAddress: Address,
+              mosaicId: MosaicId,
+              amount: BigInteger,
+              message: String
+            ): ZIO[SymbolType with HanamuraServiceType, Throwable, HanamuraResponse] =
+              for {
+                repositoryFactory <- repositoryFactoryRef.get
+                networkType       <- repositoryFactory.getNetworkType.toTask
+                privateKey        <- HanamuraService.getPrivateKey(from)
+                account = Account.createFromPrivateKey(privateKey, networkType)
+                mosaicInfo <- getMosaicInfo(from, mosaicId)
+                mosaic = new Mosaic(
+                  mosaicId,
+                  SymbolNem.calculateAbsoluteAmount(amount, mosaicInfo.divisibility)
+                )
+                transferTransaction = SymbolNem.buildTransferTransaction(
+                  recipientAddress,
+                  List(mosaic),
+                  PlainMessage.create(message),
+                  networkType
+                )
+                transactions = List(
+                  transferTransaction.toAggregate(account.getPublicAccount)
+                )
+                aggregateTransaction = SymbolNem.aggregateTransaction(
+                  transactions,
+                  defaultFee,
+                  networkType
+                )
+                generationHash <- getGenerationHashFromBlockGenesis
+                signedTransaction = SymbolNem.signTransaction(
+                  account,
+                  aggregateTransaction,
+                  generationHash
+                )
+                transactionRepository = repositoryFactory.createTransactionRepository()
+                announcedTransaction <- SymbolNem.announceTransaction(transactionRepository,
+                                                                      signedTransaction)
+
+              } yield
+                HanamuraSuccessResponse(
+                  responseMessage = s"${announcedTransaction.getMessage}"
                 )
           }
       }

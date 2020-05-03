@@ -97,7 +97,7 @@ object HanamuraService {
 
           // implement method to getPrivateKey from DB
           override def getPrivateKey(address: Address): ZIO[HanamuraServiceType, Nothing, String] =
-            ZIO.succeed("291D8F1111DE464C1DACF5CDFA722C104F458C7055D1119078018565EE76626A")
+            ZIO.succeed("1D0F91CA18292A324AA8E50A37383C73BDEE7866F6A1F465FA82841CB82C7A2E")
         }
     }
 }

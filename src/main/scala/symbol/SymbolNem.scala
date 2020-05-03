@@ -171,12 +171,15 @@ object SymbolNem {
 
   def createPlainMessage(payload: String): PlainMessage = PlainMessage.create(payload)
 
-  def sendMosaicsTo(
+  def calculateAbsoluteAmount(amount: BigInteger, divisibility: Int): BigInteger =
+    amount.multiply(BigInteger.valueOf(10).pow(divisibility))
+
+  def buildTransferTransaction(
     recipientAddress: UnresolvedAddress,
     mosaics: List[Mosaic],
     message: Message,
-    fee: BigInteger
-  )(implicit networkType: NetworkType): TransferTransaction =
+    networkType: NetworkType
+  ): TransferTransaction =
     TransferTransactionFactory
       .create(
         networkType,
@@ -184,7 +187,6 @@ object SymbolNem {
         mosaics.asJava,
         message
       )
-      .maxFee(fee)
       .build()
 
 }
