@@ -1,5 +1,7 @@
 package models
-
+object HanamuraManagementException {
+  case class HanamuraAPIException(message: String) extends Exception
+}
 object HanamuraMessages {
 
   abstract class FieldId(val name: String) extends Serializable {

@@ -1,6 +1,5 @@
 package mongodb
 
-import com.typesafe.config.{ Config, ConfigFactory }
 import models.User
 import org.bson.codecs.configuration.{ CodecProvider, CodecRegistry }
 import org.mongodb.scala.{ MongoClient, MongoCollection, MongoDatabase }
@@ -10,7 +9,6 @@ import zio.UIO
 import scala.reflect.ClassTag
 object Mongo {
   lazy val userCodecProvider: CodecProvider = Macros.createCodecProvider[User]()
-  lazy val config: Config                   = ConfigFactory.load()
   lazy val codecRegistry: CodecRegistry = fromRegistries(
     fromProviders(
       userCodecProvider

@@ -16,6 +16,7 @@ import graphql._
 import io.nem.symbol.sdk.model.message.PlainMessage
 import io.nem.symbol.sdk.model.namespace.{ AliasAction, AliasType, NamespaceId }
 import models.HanamuraMessages.{ HanamuraResponse, HanamuraSuccessResponse }
+import org.bson.types.ObjectId
 
 package object symbolService {
   type SymbolType = Has[SymbolService.Service]
@@ -211,7 +212,11 @@ package object symbolService {
               for {
                 repositoryFactory <- repositoryFactoryRef.get
                 networkType       <- repositoryFactory.getNetworkType.toTask
-                privateKey        <- HanamuraService.getPrivateKey(accountAddress)
+                privateKey <- HanamuraService.getPrivateKey(
+                  new ObjectId("5ec15922275e7b399229da0c"),
+                  accountAddress,
+                  "P@ssword!"
+                )
                 account = Account.createFromPrivateKey(privateKey, networkType)
                 mosaicDefinitionTransaction = SymbolNem.buildMosaicDefinitionTransaction(
                   account,
@@ -253,7 +258,11 @@ package object symbolService {
               for {
                 repositoryFactory <- repositoryFactoryRef.get
                 networkType       <- repositoryFactory.getNetworkType.toTask
-                privateKey        <- HanamuraService.getPrivateKey(accountAddress)
+                privateKey <- HanamuraService.getPrivateKey(
+                  new ObjectId("5ec15922275e7b399229da0c"),
+                  accountAddress,
+                  "P@ssword!"
+                )
                 account = Account.createFromPrivateKey(privateKey, networkType)
                 modifyMosaicSupplyTransaction = SymbolNem.modifyMosaicSupply(
                   mosaicId,
@@ -284,7 +293,11 @@ package object symbolService {
               for {
                 repositoryFactory <- repositoryFactoryRef.get
                 networkType       <- repositoryFactory.getNetworkType.toTask
-                privateKey        <- HanamuraService.getPrivateKey(accountAddress)
+                privateKey <- HanamuraService.getPrivateKey(
+                  new ObjectId("5ec15922275e7b399229da0c"),
+                  accountAddress,
+                  "P@ssword!"
+                )
                 account = Account.createFromPrivateKey(privateKey, networkType)
                 namespaceRegistrationTransaction = SymbolNem.buildNamespaceRegistrationTransaction(
                   networkType,
@@ -336,7 +349,11 @@ package object symbolService {
               for {
                 repositoryFactory <- repositoryFactoryRef.get
                 networkType       <- repositoryFactory.getNetworkType.toTask
-                privateKey        <- HanamuraService.getPrivateKey(address)
+                privateKey <- HanamuraService.getPrivateKey(
+                  new ObjectId("5ec15922275e7b399229da0c"),
+                  address,
+                  "P@ssword!"
+                )
                 account     = Account.createFromPrivateKey(privateKey, networkType)
                 namespaceId = NamespaceId.createFromName(namespaceName)
                 mosaicAliasTransaction = SymbolNem.buildMosaicAliasTransaction(networkType,
@@ -397,7 +414,11 @@ package object symbolService {
               for {
                 repositoryFactory <- repositoryFactoryRef.get
                 networkType       <- repositoryFactory.getNetworkType.toTask
-                privateKey        <- HanamuraService.getPrivateKey(from)
+                privateKey <- HanamuraService.getPrivateKey(
+                  new ObjectId("5ec15922275e7b399229da0c"),
+                  from,
+                  "P@ssword!"
+                )
                 account = Account.createFromPrivateKey(privateKey, networkType)
                 mosaicInfo <- getMosaicInfo(from, mosaicId)
                 mosaic = new Mosaic(

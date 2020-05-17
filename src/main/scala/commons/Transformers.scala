@@ -1,12 +1,12 @@
 package commons
 
-import zio.{ RIO, Task, ZIO }
+import zio.{ Task, ZIO }
 
 import scala.concurrent.Future
 import io.reactivex.Observable
 object Transformers {
   implicit final class FutureConverter[V](val self: Future[V]) {
-    def toRIO: RIO[Any, V] =
+    def toTask: Task[V] =
       ZIO.fromFuture(implicit ec => self)
   }
 

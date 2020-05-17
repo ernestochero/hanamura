@@ -4,6 +4,6 @@ import graphql.HanamuraService.HanamuraServiceType
 
 import zio.stream.ZStream
 case class Subscriptions(
-  @GQLDescription("Hanamura notify to you when a new user is added")
-  userAdded: ZStream[HanamuraServiceType, Nothing, String]
+  /*  @GQLDescription("Hanamura notify to you when a new user is added")
+  userAdded: ZStream[HanamuraServiceType, Nothing, String]*/
 )

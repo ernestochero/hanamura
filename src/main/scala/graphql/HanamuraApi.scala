@@ -124,9 +124,6 @@ object HanamuraApi extends GenericSchema[HanamuraServiceType with SymbolType] {
               args.amount,
               args.message
           )
-        ),
-        Subscriptions(
-          HanamuraService.userAddedEvent
         )
       )
     )

@@ -1,14 +1,15 @@
 package graphql
 
+import commons.CryptTSec
 import models.User
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.ObjectId
 import org.mongodb.scala.bson.collection.immutable.Document
 import zio.{ Has, Queue, Ref, Task, UIO, ZIO, ZLayer }
+import zio.interop.catz._
 import commons.Transformers._
 import io.nem.symbol.sdk.model.account.Address
-import zio.stream.ZStream
-
+import models.HanamuraManagementException.HanamuraAPIException
 import scala.language.higherKinds
 import scala.concurrent.{ ExecutionContext, Future }
 object HanamuraService {
@@ -17,9 +18,9 @@ object HanamuraService {
     def sayHello: UIO[String]
     def getUsersFromDatabase: Task[List[User]]
     def getUserFromDatabase(id: String): Task[Option[User]]
-    def addUser(name: String): Task[User]
-    def userAddedEvent: ZStream[Any, Nothing, String]
-    def getPrivateKey(address: Address): ZIO[HanamuraServiceType, Nothing, String]
+    def getPrivateKey(_id: ObjectId,
+                      address: Address,
+                      password: String): ZIO[HanamuraServiceType, Throwable, String]
   }
   def sayHello: ZIO[HanamuraServiceType, Nothing, String] =
     ZIO.accessM[HanamuraServiceType](_.get.sayHello)
@@ -30,14 +31,10 @@ object HanamuraService {
   def getUserFromDatabase(id: String): ZIO[HanamuraServiceType, Throwable, Option[User]] =
     ZIO.accessM[HanamuraServiceType](_.get.getUserFromDatabase(id))
 
-  def addUser(name: String): ZIO[HanamuraServiceType, Throwable, User] =
-    ZIO.accessM[HanamuraServiceType](_.get.addUser(name))
-
-  def userAddedEvent =
-    ZStream.accessStream[HanamuraServiceType](_.get.userAddedEvent)
-
-  def getPrivateKey(address: Address): ZIO[HanamuraServiceType, Nothing, String] =
-    ZIO.accessM[HanamuraServiceType](_.get.getPrivateKey(address))
+  def getPrivateKey(_id: ObjectId,
+                    address: Address,
+                    password: String): ZIO[HanamuraServiceType, Throwable, String] =
+    ZIO.accessM[HanamuraServiceType](_.get.getPrivateKey(_id, address, password))
 
   def make(userCollection: MongoCollection[User]): ZLayer[Any, Nothing, Has[Service]] =
     ZLayer.fromEffect {
@@ -63,10 +60,10 @@ object HanamuraService {
                 .toFuture()
                 .recoverWith { case e => Future.failed(e) }
                 .map(_.headOption)
-                .toRIO
+                .toTask
             )
           }
-          override def addUser(name: String): Task[User] = {
+          /*          override def addUser(name: String): Task[User] = {
             val user = User(name = name)
             val res = userCollection.get.flatMap(
               _.insertOne(user)
@@ -93,11 +90,26 @@ object HanamuraService {
               queue <- Queue.unbounded[String]
               _     <- subscribers.update(queue :: _)
             } yield ZStream.fromQueue(queue)
-          }
-
+          }*/
           // implement method to getPrivateKey from DB
-          override def getPrivateKey(address: Address): ZIO[HanamuraServiceType, Nothing, String] =
-            ZIO.succeed("1D0F91CA18292A324AA8E50A37383C73BDEE7866F6A1F465FA82841CB82C7A2E")
+          override def getPrivateKey(
+            _id: ObjectId,
+            address: Address,
+            password: String
+          ): ZIO[HanamuraServiceType, Throwable, String] =
+            for {
+              uc <- userCollection.get
+              filter = Document("_id" -> _id)
+              users <- uc.find(filter).toFuture().toTask
+              privateKey <- users.headOption.fold[Task[String]](
+                ZIO.fail(HanamuraAPIException("user doesn't exist"))
+              ) { user =>
+                if (address.pretty() != user.address)
+                  ZIO.fail(HanamuraAPIException("address doesn't match"))
+                else ZIO.succeed(user.privateKeyEncrypted)
+              }
+              decrypt <- CryptTSec[Task](password).decrypt(privateKey)
+            } yield decrypt
         }
     }
 }
